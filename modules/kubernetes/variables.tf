@@ -8,7 +8,7 @@ variable "workload_identities" {
 
 variable "workload_client_ids" {
   type        = map(string)
-  description = "Managed identity client ID per workload identity key, from the cluster module."
+  description = "Managed identity client ID per workload identity key, from the identities module."
 }
 
 variable "agent_roles" {
