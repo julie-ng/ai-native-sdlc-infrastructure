@@ -60,6 +60,8 @@ make plan            # expect: no changes
 
 `-target` is used for staging only. The final untargeted `plan` confirms nothing was missed.
 
+Cluster commands use the separate `cluster` root output, which depends only on `module.cluster`. The combined `summary` output may not be saved until the Kubernetes stage is applied. After adding the `cluster` output to an already deployed cluster, rerun `make plan-cluster`, review the plan, and run `make apply` to save it before `make kubecontext`.
+
 Managed identity names have no random suffix. Identities and their role assignments on shared resources survive cluster rebuilds. Cluster recreation updates workload federation to its OIDC issuer. Identity resources and their group have `prevent_destroy` guards.
 
 > [!IMPORTANT]
@@ -77,7 +79,7 @@ make stop-cluster
 make start-cluster
 ```
 
-These run `az aks stop` / `az aks start` using the resource group and cluster name from `terraform output -json summary`. They wait for Azure to complete the operation. Missing outputs stop the command before Azure is called. Backing services such as PostgreSQL remain running and bill separately.
+These run `az aks stop` / `az aks start` using the resource group and cluster name from `terraform output -json cluster`. They wait for Azure to complete the operation. Missing outputs stop the command before Azure is called. Backing services such as PostgreSQL remain running and bill separately.
 
 [AKS stop/start considerations](https://learn.microsoft.com/en-us/azure/aks/start-stop-cluster): stopping releases capacity, so restart is subject to availability. After stopping, Microsoft advises waiting 15–30 minutes before starting again. Standalone pods are deleted during stop; controller-managed workloads are restored on start.
 

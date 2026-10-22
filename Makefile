@@ -35,17 +35,21 @@ plan:
 apply:
 	terraform apply plan.tfplan
 
-.PHONY: start-cluster stop-cluster
+# A combined summary can remain unavailable until the later Kubernetes stage is applied.
+define cluster_target
+set -eu; \
+cluster_output="$$(terraform output -json cluster)"; \
+cluster_rg="$$(printf '%s\n' "$$cluster_output" | jq -er '.resource_group.name | select(type == "string" and length > 0)')"; \
+cluster_name="$$(printf '%s\n' "$$cluster_output" | jq -er '.aks_cluster.name | select(type == "string" and length > 0)')"
+endef
+
+.PHONY: start-cluster stop-cluster kubecontext
 start-cluster stop-cluster:
-	@set -eu; \
-	cluster_summary="$$(terraform output -json summary)"; \
-	cluster_rg="$$(printf '%s\n' "$$cluster_summary" | jq -er '.cluster.resource_group.name | select(type == "string" and length > 0)')"; \
-	cluster_name="$$(printf '%s\n' "$$cluster_summary" | jq -er '.cluster.aks_cluster.name | select(type == "string" and length > 0)')"; \
+	@$(cluster_target); \
 	az aks $(patsubst %-cluster,%,$@) --resource-group "$$cluster_rg" --name "$$cluster_name"
 
 kubecontext:
-	az aks get-credentials \
-		--resource-group $$(terraform output -json summary | jq -r .cluster.resource_group.name) \
-		--name $$(terraform output -json summary | jq -r .cluster.aks_cluster.name)
+	@$(cluster_target); \
+	az aks get-credentials --resource-group "$$cluster_rg" --name "$$cluster_name"
 	kubelogin convert-kubeconfig -l azurecli
 	kubectl get nodes

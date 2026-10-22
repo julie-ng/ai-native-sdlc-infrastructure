@@ -1,3 +1,8 @@
+output "cluster" {
+  description = "Cluster details available before the Kubernetes module is applied."
+  value       = module.cluster.summary
+}
+
 output "summary" {
   value = {
     suffix     = local.suffix
