@@ -54,7 +54,7 @@ make plan-shared     && make apply
 make plan-identities && make apply
 make plan-cluster    && make apply
 make kubecontext
-make plan-kubernetes && make apply
+make plan-k8s && make apply
 make plan            # expect: no changes
 ```
 

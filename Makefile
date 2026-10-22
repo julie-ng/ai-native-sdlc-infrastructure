@@ -25,7 +25,7 @@ plan-identities:
 plan-cluster:
 	terraform plan -target=module.cluster -out plan.tfplan
 
-plan-kubernetes:
+plan-k8s:
 	terraform plan -target=module.kubernetes -out plan.tfplan
 
 # Full plan - should show no changes once all five steps are applied
