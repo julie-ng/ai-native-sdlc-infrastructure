@@ -1,6 +1,6 @@
 # AI-native SDLC — Infrastructure
 
-Terraform for the AISDLC platform on Azure: one AKS cluster plus the backing services it needs. Single environment (dev).
+Terraform for the AI SDLC platform on Azure: one AKS cluster plus the backing services it needs. Single environment (dev).
 
 > [!IMPORTANT]
 > First pass written without Azure access. Passes `terraform validate` and `tflint`; **never planned or applied**. See [Unverified](#unverified).
