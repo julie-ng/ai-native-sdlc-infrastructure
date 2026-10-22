@@ -6,6 +6,7 @@ Design reasoning lives in the [ADRs](https://github.com/julie-ng/autonomous-agen
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-10-22 | Name platform service identities `{service}-mi` | Human decision: `workload` is redundant in the resource name; retain each service name and the managed identity type suffix. |
 | 2026-10-22 | Remove the deployment suffix from all managed identity names and the identities module inputs | Human decision: identity names only need uniqueness within their resource group. Supersedes suffix retention for identities in the module split below. [Azure naming rules](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules#microsoftmanagedidentity). |
 | 2026-10-22 | Add persistent `identities` module and resource group before `cluster`; protect principals with `prevent_destroy` | Preserve principals and shared-resource grants across cluster rebuilds. Federation and cluster-scoped RBAC stay in `cluster`. Retain the deployment suffix. Existing identities require migration review. [AKS identity lifecycle](https://learn.microsoft.com/en-us/azure/aks/managed-identity-overview), [Terraform refactoring](https://developer.hashicorp.com/terraform/language/modules/develop/refactoring). |
 | 2026-10-22 | One environment, `dev`; base name `aisdlc`, no env in names | POC. |
