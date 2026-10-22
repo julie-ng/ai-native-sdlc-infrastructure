@@ -27,6 +27,9 @@ Networking and shared groups carry no suffix — longer lifecycle than the clust
 admin_ip_ranges = ["x.x.x.x/32"]
 ```
 
+> [!IMPORTANT]
+> CIDR notation is required. For a single IPv4 address, append `/32`.
+
 ### Log in to Azure 
 
 Terraform authenticates via the ambient Azure CLI session, not a stored credential:
