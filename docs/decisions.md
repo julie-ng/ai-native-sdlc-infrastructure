@@ -15,7 +15,7 @@ Design reasoning lives in the [ADRs](https://github.com/julie-ng/autonomous-agen
 | 2026-10-22 | Public API server, Entra ID only, local accounts off, Azure RBAC | Default endpoint; simplest. |
 | 2026-10-22 | Azure CNI Overlay, no network policy engine | Easiest option. No NetworkPolicy yet — nothing restricts pod-to-pod or agent egress inside the cluster. |
 | 2026-10-22 | Two node pools: `system` (System mode, `CriticalAddonsOnly` taint), `platform` (User mode) | Target design adds an `agents` pool. For now agents and platform services share `platform`. |
-| 2026-10-22 | Egress: load balancer outbound IP (`aisdlc-egress-ip`) | Static Egress Gateway needs a dedicated Gateway-mode pool (≥ 2 nodes for HA, no autoscaler) and a public IP prefix — extra cost ([docs](https://learn.microsoft.com/en-us/azure/aks/configure-static-egress-gateway)). NAT gateway not wanted. |
+| 2026-10-22 | Egress: load balancer outbound IP (`ai-sdlc-egress-ip`) | Static Egress Gateway needs a dedicated Gateway-mode pool (≥ 2 nodes for HA, no autoscaler) and a public IP prefix — extra cost ([docs](https://learn.microsoft.com/en-us/azure/aks/configure-static-egress-gateway)). NAT gateway not wanted. |
 | 2026-10-22 | Ingress IP created, unused | No inbound webhook, no ingress controller, no DNS zone yet. No role assignment on it. |
 | 2026-10-22 | `AzureFirewallSubnet` created empty (`/26`) | Reserves address space for egress control (ADR-002). |
 | 2026-10-22 | Key Vault, Storage: service endpoints + default-deny network rules | Backbone routing without private endpoint cost. |

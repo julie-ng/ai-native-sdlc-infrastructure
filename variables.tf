@@ -4,7 +4,7 @@
 
 variable "name" {
   type        = string
-  description = "Base name for all resources, e.g. `aisdlc`."
+  description = "Base name for all resources, e.g. `ai-sdlc`."
 
   validation {
     condition     = can(regex("^[a-z][a-z0-9]{1,9}$", var.name))

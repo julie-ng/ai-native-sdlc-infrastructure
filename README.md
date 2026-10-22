@@ -11,9 +11,9 @@ Apply one at a time, in this order. Each depends on the outputs of the ones befo
 
 | # | Module | Resource group | Creates |
 |---|---|---|---|
-| 1 | [`networking`](./modules/networking/) | `aisdlc-networking-rg` | VNet, `aks-nodes-subnet` (service endpoints: Key Vault, Storage), empty `AzureFirewallSubnet`, ingress + egress static IPs |
-| 2 | [`shared`](./modules/shared/) | `aisdlc-shared-rg` | PostgreSQL Flexible Server (`workflow`, `argo` DBs), Blob Storage: `aisdlc{suffix}artifacts` (artifact service), `aisdlc{suffix}argo` (Argo artifact repository), Key Vault, ACR (pull only), Log Analytics (North Europe) |
-| 3 | [`cluster`](./modules/cluster/) | `aisdlc-{suffix}-rg` | AKS (`system` + `platform` pools, Key Vault CSI driver), control-plane + kubelet identities, workload identities, Container Insights, role assignments |
+| 1 | [`networking`](./modules/networking/) | `ai-sdlc-networking-rg` | VNet, `aks-nodes-subnet` (service endpoints: Key Vault, Storage), empty `AzureFirewallSubnet`, ingress + egress static IPs |
+| 2 | [`shared`](./modules/shared/) | `ai-sdlc-shared-rg` | PostgreSQL Flexible Server (`workflow`, `argo` DBs), Blob Storage: `ai-sdlc{suffix}artifacts` (artifact service), `ai-sdlc{suffix}argo` (Argo artifact repository), Key Vault, ACR (pull only), Log Analytics (North Europe) |
+| 3 | [`cluster`](./modules/cluster/) | `ai-sdlc-{suffix}-rg` | AKS (`system` + `platform` pools, Key Vault CSI driver), control-plane + kubelet identities, workload identities, Container Insights, role assignments |
 | 4 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents`; ServiceAccounts; `argo-executor` ServiceAccount + Role |
 
 Networking and shared groups carry no suffix — longer lifecycle than the cluster. Globally unique names (Key Vault, Storage, ACR, Postgres) and the cluster carry a random 4-character suffix, kept in state.
@@ -94,7 +94,7 @@ Kept out of Terraform so secrets never land in state, or because no azurerm reso
 | PostgreSQL | Public endpoint, firewall: cluster egress IP, `admin_ip_ranges`. Flexible Server has no service endpoint support — traffic is not on the Azure backbone. |
 | ACR | Public endpoint. Basic SKU has no network rules. Kubelet pulls; nothing in this repo or GitHub can push — images are pushed manually. |
 
-Egress: all cluster outbound traffic leaves via `aisdlc-egress-ip` (load balancer outbound IP). No egress filtering.
+Egress: all cluster outbound traffic leaves via `ai-sdlc-egress-ip` (load balancer outbound IP). No egress filtering.
 
 ## Unverified
 

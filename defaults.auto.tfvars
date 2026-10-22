@@ -1,4 +1,4 @@
-name     = "aisdlc"
+name     = "ai-sdlc"
 location = "westeurope" # monitoring is pinned to northeurope, see modules/shared/log-analytics.tf
 
 default_tags = {
