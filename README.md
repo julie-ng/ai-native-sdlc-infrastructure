@@ -14,7 +14,7 @@ Apply one at a time, in this order. Each depends on the outputs of the ones befo
 | 1 | [`networking`](./modules/networking/) | `ai-sdlc-networking-rg` | VNet, `aks-nodes-subnet` (service endpoints: Key Vault, Storage), empty `AzureFirewallSubnet`, ingress + egress static IPs |
 | 2 | [`shared`](./modules/shared/) | `ai-sdlc-shared-rg` | PostgreSQL Flexible Server (`workflow`, `argo` DBs), Blob Storage: `ai-sdlc{suffix}artifacts` (artifact service), `ai-sdlc{suffix}argo` (Argo artifact repository), Key Vault, ACR (pull only), Log Analytics (North Europe) |
 | 3 | [`identities`](./modules/identities/) | `ai-sdlc-identities-rg` | Persistent control-plane, kubelet and platform workload identities; role assignments for networking, ACR, Storage and Key Vault |
-| 4 | [`cluster`](./modules/cluster/) | `ai-sdlc-cluster-rg` | AKS (`system` + `platform` pools, Key Vault CSI driver), cluster-specific workload federation, Container Insights, cluster-admin role assignment |
+| 4 | [`cluster`](./modules/cluster/) | `ai-sdlc-cluster-rg` | AKS (`system`, `platform` and `agents` pools, Key Vault CSI driver), cluster-specific workload federation, Container Insights, cluster-admin role assignment |
 | 5 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents`; ServiceAccounts; `argo-executor` ServiceAccount + Role |
 
 Resource group names carry no random suffix. AKS creates its Azure-managed node resources in `ai-sdlc-aks-managed-rg`. Globally unique names (Key Vault, Storage, ACR, Postgres) and the cluster carry a random 4-character suffix, kept in state.
@@ -67,6 +67,21 @@ Managed identity names have no random suffix. Identities and their role assignme
 
 > [!NOTE]
 > **Regions**: Defaults to `westeurope`; see [`defaults.auto.tfvars`](./defaults.auto.tfvars). PostgreSQL is pinned to `northeurope` because this subscription cannot provision it in West Europe. Log Analytics and the Container Insights data collection rule are also pinned to `northeurope` and must share a region.
+
+### Node pools
+
+| Pool | VM size | Minimum nodes | Maximum nodes |
+|---|---|---:|---:|
+| `system` | `Standard_D2s_v5` | 1 | 2 |
+| `platform` | `Standard_D2s_v5` | 1 | 2 |
+| `agents` | `Standard_D4s_v5` | 1 | 2 |
+
+> [!IMPORTANT]
+> System-pool sizing is unverified: the requested POC configuration uses one D2s v5 node, but [current AKS system-pool documentation](https://learn.microsoft.com/en-us/azure/aks/use-system-pools) lists at least two nodes and a VM size with at least 4 vCPUs. The configured D2s v5 has 2 vCPUs. Resolve this discrepancy before applying.
+
+All pools autoscale within these bounds. For the POC, use [AKS cluster start/stop](https://learn.microsoft.com/en-us/azure/aks/start-stop-cluster) when idle. Stopping releases capacity, so restarting remains subject to regional availability. User-pool scale-to-zero is a [deferred target design (#3)](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/3); no application wake-up infrastructure is included.
+
+Workload manifests must select `kubernetes.azure.com/agentpool: platform` for platform services or `kubernetes.azure.com/agentpool: agents` for agent pods. Agent pods must also tolerate `workload=agents:NoSchedule`. These scheduling settings do not provide a security isolation boundary. Workload templates are maintained outside this repo.
 
 ### Kubernetes Namespaces
 
@@ -129,6 +144,7 @@ Written blind. Check on first apply:
 - `os_sku = "AzureLinux"`, `postgres_version = "17"`, VM sizes available in the chosen region.
 - Successful creation of PostgreSQL 17 with `B_Standard_B1ms` in `northeurope`. The human developer confirmed regional capabilities are available; server creation is still unverified.
 - The identities module creates role assignments before AKS creation, and a cluster rebuild preserves principal IDs and role assignments on shared resources while updating federation.
+- All three node pools provision with their configured sizes; workload templates select the intended pools and tolerate the agent taint.
 - AKS accepts the custom node resource group name `ai-sdlc-aks-managed-rg` on creation.
 - Network Contributor on the egress IP is sufficient for the control plane to attach it.
 

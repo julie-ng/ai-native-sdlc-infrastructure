@@ -26,16 +26,20 @@ dns_service_ip = "172.16.0.10"
 # =====
 #  AKS
 # =====
-# Target design has three pools: system, platform, agents.
-# For now agents run on the platform pool.
+# POC: keep one node per pool; use cluster start/stop when idle.
 
+# Requested POC sizing conflicts with current AKS system-pool guidance; see README.
 system_vm_size         = "Standard_D2s_v5"
 system_nodes_min_count = 1
 system_nodes_max_count = 2
 
-platform_vm_size         = "Standard_D4s_v5"
+platform_vm_size         = "Standard_D2s_v5"
 platform_nodes_min_count = 1
-platform_nodes_max_count = 3
+platform_nodes_max_count = 2
+
+agents_vm_size         = "Standard_D4s_v5"
+agents_nodes_min_count = 1
+agents_nodes_max_count = 2
 
 agent_roles = ["planner", "coder", "reviewer", "open-pr"]
 

@@ -6,6 +6,8 @@ Design reasoning lives in the [ADRs](https://github.com/julie-ng/autonomous-agen
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-10-22 | POC keeps minimum 1 and maximum 2 on every pool; defer user-pool scale-to-zero | Human decision: use [AKS cluster start/stop](https://learn.microsoft.com/en-us/azure/aks/start-stop-cluster) when idle rather than adding application wake-up infrastructure. Scale-to-zero remains a [target design, #3](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/3). |
+| 2026-10-22 | Three pools: `system` and `platform` use D2s v5; `agents` uses D4s v5; all autoscale 1–2 nodes | Human decision: smaller HTTP platform services, more capacity per agent node. Agent nodes have `workload=agents:NoSchedule`; workload manifests select their pool. Scheduling separation is not a security boundary. System D2s/minimum 1 acceptance is unverified and conflicts with [current system-pool requirements](https://learn.microsoft.com/en-us/azure/aks/use-system-pools). [AKS node pool placement](https://learn.microsoft.com/en-us/azure/aks/use-multiple-node-pools). |
 | 2026-10-22 | Name cluster resource groups `{name}-cluster-rg` and `{name}-aks-managed-rg`, without random suffixes | Human decision: resource group names require subscription-level uniqueness only. Azure creates the managed node group. Changing either group name after AKS deployment requires cluster replacement. [Azure naming rules](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules#microsoftresources), [pinned provider](https://github.com/hashicorp/terraform-provider-azurerm/blob/v5.10.0/website/docs/r/kubernetes_cluster.html.markdown). |
 | 2026-10-22 | Name platform service identities `{service}-mi` | Human decision: `workload` is redundant in the resource name; retain each service name and the managed identity type suffix. |
 | 2026-10-22 | Remove the deployment suffix from all managed identity names and the identities module inputs | Human decision: identity names only need uniqueness within their resource group. Supersedes suffix retention for identities in the module split below. [Azure naming rules](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules#microsoftmanagedidentity). |
@@ -45,7 +47,7 @@ Design reasoning lives in the [ADRs](https://github.com/julie-ng/autonomous-agen
 | Trade-off | Notes |
 |---|---|
 | Postgres traffic over the public internet | TLS enforced by the service; firewall limits sources. Private endpoint or VNet integration later. |
-| Agents and platform services share a node pool | Same nodes, separate namespaces. No node-level separation until the `agents` pool exists. |
+| Dedicated agent pool adds a third always-on node in the POC | Minimum one node per pool. User-pool scale-to-zero is deferred; cluster start/stop is the POC approach when idle. |
 | No egress filtering | Agents can reach any destination. Firewall subnet is reserved. |
 | `-target` for staged applies | Terraform warns against routine use. Final untargeted plan should show no changes. |
 | ACR on public endpoint | Basic SKU has no network rules; private endpoints need Premium. |

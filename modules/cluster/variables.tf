@@ -65,6 +65,18 @@ variable "platform_nodes_max_count" {
   type = number
 }
 
+variable "agents_vm_size" {
+  type = string
+}
+
+variable "agents_nodes_min_count" {
+  type = number
+}
+
+variable "agents_nodes_max_count" {
+  type = number
+}
+
 # From networking module
 # ----------------------
 

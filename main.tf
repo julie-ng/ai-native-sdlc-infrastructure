@@ -104,6 +104,10 @@ module "cluster" {
   platform_nodes_min_count = var.platform_nodes_min_count
   platform_nodes_max_count = var.platform_nodes_max_count
 
+  agents_vm_size         = var.agents_vm_size
+  agents_nodes_min_count = var.agents_nodes_min_count
+  agents_nodes_max_count = var.agents_nodes_max_count
+
   # From networking
   aks_nodes_subnet_id = module.networking.subnets.aks_nodes.id
   egress_ip_id        = module.networking.public_ips.egress.id

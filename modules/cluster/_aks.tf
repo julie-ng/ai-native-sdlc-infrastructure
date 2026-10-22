@@ -42,7 +42,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
     mode = "Manual"
   }
 
-  # System pool. Platform pool is a separate resource, see _node-pools.tf
+  # System pool. User pools are separate resources, see _node-pools.tf
   default_node_pool {
     name                         = "system"
     vm_size                      = var.system_vm_size
