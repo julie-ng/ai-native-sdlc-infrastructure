@@ -27,7 +27,7 @@ Networking and shared groups carry no suffix — longer lifecycle than the clust
 admin_ip_ranges = ["x.x.x.x/32"]
 ```
 
-### Azure authentication
+### Log in to Azure 
 
 Terraform authenticates via the ambient Azure CLI session, not a stored credential:
 
@@ -36,11 +36,10 @@ az login
 az account set --subscription <subscription-id>
 ```
 
-**There are no hard-coded user, tenant or subscription IDs anywhere in this repository.** Every place that needs to know who's applying — the Postgres Entra admin, the deployer's Key Vault grants, the AKS cluster-admin role assignment — reads it from `data.azurerm_client_config.current`, which resolves to whoever `az login` signed in as. The Postgres admin's UPN is looked up from that object ID via `data.azuread_user`. `subscription_id` is only a *required* provider property when `use_cli` is `false`; with CLI authentication the provider takes whatever subscription `az account set` selected. Log in as the wrong account and Terraform still builds correctly — just for the wrong person.
+**There are no hard-coded user, tenant or subscription IDs anywhere in this repository.** Every place that needs to know who's applying reads from references, e.g. `data.azurerm_client_config.current` or `data.azuread_user`.
 
-Must be a user sign-in, not a service principal — the Postgres admin lookup and `principal_type = "User"` assume one.
-
-Region: `westeurope` (`location` in [`defaults.auto.tfvars`](./defaults.auto.tfvars)). Log Analytics and the Container Insights data collection rule are pinned to `northeurope` in code and must stay in the same region as each other.
+> [!NOTE]
+> Must be a user sign-in, not a service principal — the Postgres admin lookup and `principal_type = "User"` assume one.
 
 ## Deploy
 
@@ -55,6 +54,20 @@ make plan            # expect: no changes
 ```
 
 `-target` is used for staging only. The final untargeted `plan` confirms nothing was missed.
+
+> [!NOTE]
+> **Regions**: Defaults to `westeurope` see [`defaults.auto.tfvars`](./defaults.auto.tfvars). Log Analytics and the Container Insights must be in same region. Due to Microsoft data center capacity constraints data collection rule are pinned to `northeurope`.
+
+### Kubernetes Namespaces
+
+Namespaces form part of the security boundary, enforced through ServiceAccounts, RBAC and Azure Workload Identity. The GitHub broker has its own namespace to isolate its ServiceAccount and Key Vault secret mounts, including the GitHub App private key.
+
+| Namespace | What goes here |
+|---|---|
+| `platform` | Workflow service and artifact service, with their workload-identity ServiceAccounts. |
+| `argo` | Argo Workflows controller and server, with their workload-identity ServiceAccounts. |
+| `github-broker` | GitHub token broker, with its workload-identity ServiceAccount (`token-broker`). |
+| `agents` | Agent workflow pods; ServiceAccounts for `planner`, `coder`, `reviewer` and `open-pr`; `argo-executor` ServiceAccount and RBAC. Agent ServiceAccounts have no cloud identity. |
 
 ### After apply — manual steps
 
