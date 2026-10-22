@@ -3,11 +3,6 @@ variable "name" {
   description = "Base name for all resources."
 }
 
-variable "suffix" {
-  type        = string
-  description = "Stable deployment suffix; retained across cluster rebuilds."
-}
-
 variable "location" {
   type = string
 }

@@ -64,7 +64,6 @@ module "shared" {
 module "identities" {
   source   = "./modules/identities"
   name     = var.name
-  suffix   = local.suffix
   location = var.location
   tags     = var.default_tags
 

@@ -60,7 +60,7 @@ make plan            # expect: no changes
 
 `-target` is used for staging only. The final untargeted `plan` confirms nothing was missed.
 
-Identities and their shared-resource grants survive cluster rebuilds; retain the deployment suffix. Cluster recreation updates workload federation to its OIDC issuer. Identity resources and their group have `prevent_destroy` guards.
+Managed identity names have no random suffix. Identities and their shared-resource grants survive cluster rebuilds. Cluster recreation updates workload federation to its OIDC issuer. Identity resources and their group have `prevent_destroy` guards.
 
 > [!IMPORTANT]
 > Before applying this module split, discard any earlier saved plan and generate a fresh one. `moved.tf` preserves Terraform addresses, but existing identities in the cluster resource group would still require replacement to use the new group; `prevent_destroy` blocks that replacement. If identities have already been deployed, review a separate migration before applying.

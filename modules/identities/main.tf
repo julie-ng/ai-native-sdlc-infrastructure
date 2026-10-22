@@ -14,6 +14,5 @@ resource "azurerm_resource_group" "identities_rg" {
 }
 
 locals {
-  name          = lower(var.name)
-  name_suffixed = "${local.name}-${var.suffix}"
+  name = lower(var.name)
 }
