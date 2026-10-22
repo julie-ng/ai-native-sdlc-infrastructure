@@ -20,6 +20,7 @@ Design reasoning lives in the [ADRs](https://github.com/julie-ng/autonomous-agen
 | 2026-10-22 | `AzureFirewallSubnet` created empty (`/26`) | Reserves address space for egress control (ADR-002). |
 | 2026-10-22 | Key Vault, Storage: service endpoints + default-deny network rules | Backbone routing without private endpoint cost. |
 | 2026-10-22 | Two storage accounts: `artifacts` (artifact service), `argo` (Argo artifact repository) | Separate access boundaries: artifact-service and argo identities each get Blob Data Contributor on their own container only. |
+| 2026-10-22 | POC: no Argo artifacts or archived logs from agent steps | Argo's `init` / `wait` containers would need credentials in the agent pod. Handoffs go through the artifact service. Target design: workload identity for executor containers only, [#2](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/2). |
 | 2026-10-22 | Postgres: public access + firewall rules | Flexible Server supports VNet integration or public access (+ private endpoint) — no service endpoints ([docs](https://learn.microsoft.com/en-us/azure/postgresql/network/concepts-networking-public)). |
 | 2026-10-22 | Postgres Entra-only auth | ADR-005: Argo via workload identity, no stored password. |
 | 2026-10-22 | Container Insights (managed identity auth) + Log Analytics | Requested minimum observability. DCR + association created explicitly, per [Microsoft's Terraform sample](https://github.com/microsoft/Docker-Provider/tree/ci_prod/scripts/onboarding/aks/onboarding-msi-terraform). |
@@ -38,10 +39,9 @@ Design reasoning lives in the [ADRs](https://github.com/julie-ng/autonomous-agen
 | `-target` for staged applies | Terraform warns against routine use. Final untargeted plan should show no changes. |
 | ACR on public endpoint | Basic SKU has no network rules; private endpoints need Premium. |
 | Storage LRS, Postgres Burstable, no HA | Cost. |
-
-## Open
-
-- **Argo artifact repository vs. ADR-003.** Argo's `wait` container in each step pod saves output artifacts and logs; the `init` container fetches inputs ([architecture](https://argo-workflows.readthedocs.io/en/latest/architecture/)). For agent steps that is the agent pod's identity, and agent pods get no cloud identity. As built, only the Argo controller and server can reach the `argo` account, so agent steps cannot write Argo artifacts or archived logs. Options: workload identity on agent ServiceAccounts scoped to the `argo` container (contradicts ADR-003), an account key in a Secret in `agents` (shared keys are disabled), or no Argo artifacts from agent steps. Undecided.
+| `argo` storage account unused by agent steps in the POC | Only the Argo controller and server identity has access. Workflow templates must not set `archiveLogs` or output artifacts on agent steps, or the executor fails to upload. |
+| Agent step logs outlive the pod only via Container Insights | DCR collects `ContainerLogV2` from all namespaces into Log Analytics, 30-day retention. Agent output lands there too. |
+| Pods can reach the node's kubelet identity (AcrPull) via instance metadata | Accepted: pulling images grants no credentials. Not verified on AKS. |
 
 ## Not carried over from cloudkube
 
