@@ -39,11 +39,6 @@ variable "admin_ip_ranges" {
 # Postgres
 # --------
 
-variable "admin_principal_name" {
-  type        = string
-  description = "UPN of the Entra admin on Postgres."
-}
-
 variable "postgres_version" {
   type = string
 }

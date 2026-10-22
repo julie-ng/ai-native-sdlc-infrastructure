@@ -1,8 +1,9 @@
 # =======
 #  Setup
 # =======
-# State is local for now. Subscription comes from the environment:
-#   export ARM_SUBSCRIPTION_ID=…
+# State is local for now.
+# Authenticates via the Azure CLI session - no stored credentials, no hard-coded IDs.
+# Tenant, subscription and deployer identity come from `az login` / `az account set`.
 
 terraform {
   required_version = ">= 1.10"
@@ -11,6 +12,10 @@ terraform {
     azurerm = {
       source  = "hashicorp/azurerm"
       version = "~> 5.10"
+    }
+    azuread = {
+      source  = "hashicorp/azuread"
+      version = "~> 3.10"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -23,10 +28,15 @@ terraform {
   }
 }
 
+# No subscription_id: with CLI auth (use_cli, the default) the provider uses
+# the subscription selected by `az account set`.
 provider "azurerm" {
   storage_use_azuread = true # shared keys are disabled on the storage account
   features {}
 }
+
+# Only used to look up the deployer's UPN for the Postgres Entra admin
+provider "azuread" {}
 
 # Local accounts are disabled on the cluster, so authenticate via Entra ID.
 # Requires `kubelogin` and an `az login` session on the machine running Terraform.

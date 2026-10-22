@@ -31,11 +31,6 @@ variable "default_tags" {
 #  Admin Access
 # ==============
 
-variable "admin_principal_name" {
-  type        = string
-  description = "UPN of the human admin running Terraform. Becomes Entra admin on Postgres. Object ID comes from the az login session."
-}
-
 variable "admin_ip_ranges" {
   type        = list(string)
   description = "CIDRs allowed through Key Vault, Storage and Postgres firewalls, e.g. the admin's home IP as x.x.x.x/32. Empty = only the cluster."

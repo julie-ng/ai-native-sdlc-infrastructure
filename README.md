@@ -21,13 +21,24 @@ Networking and shared groups carry no suffix — longer lifecycle than the clust
 ## Prerequisites
 
 - `terraform` ≥ 1.10, `az`, `kubelogin`, `kubectl`, `jq`
-- `az login`, then `export ARM_SUBSCRIPTION_ID=…`
-- `private.auto.tfvars` (git-ignored):
+- `private.auto.tfvars` (git-ignored) with your IP for the Key Vault, Storage and Postgres firewalls:
 
 ```hcl
-admin_principal_name = "you@example.com"  # Entra admin on Postgres
-admin_ip_ranges      = ["x.x.x.x/32"]     # your IP - Key Vault, Storage, Postgres firewalls
+admin_ip_ranges = ["x.x.x.x/32"]
 ```
+
+### Azure authentication
+
+Terraform authenticates via the ambient Azure CLI session, not a stored credential:
+
+```sh
+az login
+az account set --subscription <subscription-id>
+```
+
+**There are no hard-coded user, tenant or subscription IDs anywhere in this repository.** Every place that needs to know who's applying — the Postgres Entra admin, the deployer's Key Vault grants, the AKS cluster-admin role assignment — reads it from `data.azurerm_client_config.current`, which resolves to whoever `az login` signed in as. The Postgres admin's UPN is looked up from that object ID via `data.azuread_user`. `subscription_id` is only a *required* provider property when `use_cli` is `false`; with CLI authentication the provider takes whatever subscription `az account set` selected. Log in as the wrong account and Terraform still builds correctly — just for the wrong person.
+
+Must be a user sign-in, not a service principal — the Postgres admin lookup and `principal_type = "User"` assume one.
 
 Region: `location` in [`defaults.auto.tfvars`](./defaults.auto.tfvars). `northeurope` is a placeholder.
 

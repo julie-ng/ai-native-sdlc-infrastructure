@@ -6,5 +6,9 @@ terraform {
       source  = "hashicorp/azurerm"
       version = ">= 5.10, < 6.0" # 5.x argument names, e.g. node_provisioning_profile
     }
+    azuread = {
+      source  = "hashicorp/azuread"
+      version = ">= 3.10, < 4.0"
+    }
   }
 }

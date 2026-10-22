@@ -51,10 +51,9 @@ module "shared" {
   admin_ip_ranges     = var.admin_ip_ranges
 
   # Postgres
-  admin_principal_name = var.admin_principal_name
-  postgres_version     = var.postgres_version
-  postgres_sku_name    = var.postgres_sku_name
-  postgres_databases   = var.postgres_databases
+  postgres_version   = var.postgres_version
+  postgres_sku_name  = var.postgres_sku_name
+  postgres_databases = var.postgres_databases
 }
 
 # =============

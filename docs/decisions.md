@@ -9,6 +9,7 @@ Design reasoning lives in the [ADRs](https://github.com/julie-ng/autonomous-agen
 | 2026-10-22 | One environment, `dev`; base name `aisdlc`, no env in names | POC. |
 | 2026-10-22 | One root module calling four modules: networking, shared, cluster, kubernetes. Applied one at a time with `-target` | Staged rollout while testing; one state. Replaces the earlier separate-repo split. |
 | 2026-10-22 | Local state | Blind first pass; remote backend later. |
+| 2026-10-22 | Azure CLI auth only; no user, tenant or subscription IDs in the repo | Deployer identity from `data.azurerm_client_config`, Postgres admin UPN via `data.azuread_user`. Subscription from `az account set` — azurerm v5.10 requires `subscription_id` only when `use_cli = false` (`internal/provider/provider.go`). Adds the `azuread` provider for one lookup. |
 | 2026-10-22 | Region is a variable, `northeurope` placeholder | Region capacity for all services not yet checked. |
 | 2026-10-22 | Random 4-character suffix on globally unique names and the cluster; networking and shared groups unsuffixed | Longer lifecycle than the cluster. |
 | 2026-10-22 | Public API server, Entra ID only, local accounts off, Azure RBAC | Default endpoint; simplest. |

@@ -32,14 +32,19 @@ resource "azurerm_postgresql_flexible_server" "postgres" {
   }
 }
 
-# Human admin (whoever runs Terraform). Platform identities get database roles
+# Human admin = whoever `az login` signed in as. Platform identities get database roles
 # via SQL after apply - see README.
+# Assumes a user sign-in; a service principal has no azuread_user.
+data "azuread_user" "current" {
+  object_id = data.azurerm_client_config.current.object_id
+}
+
 resource "azurerm_postgresql_flexible_server_active_directory_administrator" "admin" {
   server_name         = azurerm_postgresql_flexible_server.postgres.name
   resource_group_name = azurerm_resource_group.shared_rg.name
   tenant_id           = data.azurerm_client_config.current.tenant_id
   object_id           = data.azurerm_client_config.current.object_id
-  principal_name      = var.admin_principal_name
+  principal_name      = data.azuread_user.current.user_principal_name
   principal_type      = "User"
 }
 

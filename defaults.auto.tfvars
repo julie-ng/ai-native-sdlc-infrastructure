@@ -8,8 +8,7 @@ default_tags = {
 }
 
 # Set in git-ignored `private.auto.tfvars`, see README:
-#   admin_principal_name = "…"
-#   admin_ip_ranges      = ["x.x.x.x/32"]
+#   admin_ip_ranges = ["x.x.x.x/32"]
 
 # ============
 #  Networking
