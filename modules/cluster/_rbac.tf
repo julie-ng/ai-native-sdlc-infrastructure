@@ -60,12 +60,30 @@ resource "azurerm_role_assignment" "artifact_service_on_blob" {
   principal_id         = azurerm_user_assigned_identity.workloads["artifact-service"].principal_id
 }
 
-# Argo controller + server - artifact repository (server reads for the UI, controller garbage-collects).
-# Workflow step pods (Argo executor) are NOT granted access - agent pods get no cloud identity (ADR-003).
-resource "azurerm_role_assignment" "argo_on_blob" {
+# Artifact service - sign user delegation SAS URLs handed to agents.
+# Delegation key is requested at account level; the SAS can never exceed the
+# container-scoped Data Contributor grant above.
+resource "azurerm_role_assignment" "artifact_service_delegator" {
+  role_definition_name = "Storage Blob Delegator"
+  scope                = var.artifacts_storage_account_id
+  principal_id         = azurerm_user_assigned_identity.workloads["artifact-service"].principal_id
+}
+
+# Argo artifact repository. Workflow step pods (Argo executor) are NOT granted access -
+# agent pods get no cloud identity (ADR-003).
+
+# Controller - writes and garbage-collects
+resource "azurerm_role_assignment" "argo_controller_on_blob" {
   role_definition_name = "Storage Blob Data Contributor"
   scope                = var.argo_container_id
-  principal_id         = azurerm_user_assigned_identity.workloads["argo"].principal_id
+  principal_id         = azurerm_user_assigned_identity.workloads["argo-workflow-controller"].principal_id
+}
+
+# Server - reads for the UI
+resource "azurerm_role_assignment" "argo_server_on_blob" {
+  role_definition_name = "Storage Blob Data Reader"
+  scope                = var.argo_container_id
+  principal_id         = azurerm_user_assigned_identity.workloads["argo-server"].principal_id
 }
 
 # Token broker - read the GitHub App private key

@@ -12,9 +12,9 @@ Apply one at a time, in this order. Each depends on the outputs of the ones befo
 | # | Module | Resource group | Creates |
 |---|---|---|---|
 | 1 | [`networking`](./modules/networking/) | `aisdlc-networking-rg` | VNet, `aks-nodes-subnet` (service endpoints: Key Vault, Storage), empty `AzureFirewallSubnet`, ingress + egress static IPs |
-| 2 | [`shared`](./modules/shared/) | `aisdlc-shared-rg` | PostgreSQL Flexible Server (`workflow`, `argo` DBs), Blob Storage: `aisdlc{suffix}artifacts` (artifact service), `aisdlc{suffix}argo` (Argo artifact repository), Key Vault, ACR, Log Analytics |
-| 3 | [`cluster`](./modules/cluster/) | `aisdlc-{suffix}-rg` | AKS (`system` + `platform` pools), control-plane + kubelet identities, workload identities, Container Insights, role assignments |
-| 4 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents`; ServiceAccounts |
+| 2 | [`shared`](./modules/shared/) | `aisdlc-shared-rg` | PostgreSQL Flexible Server (`workflow`, `argo` DBs), Blob Storage: `aisdlc{suffix}artifacts` (artifact service), `aisdlc{suffix}argo` (Argo artifact repository), Key Vault, ACR (pull only), Log Analytics (North Europe) |
+| 3 | [`cluster`](./modules/cluster/) | `aisdlc-{suffix}-rg` | AKS (`system` + `platform` pools, Key Vault CSI driver), control-plane + kubelet identities, workload identities, Container Insights, role assignments |
+| 4 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents`; ServiceAccounts; `argo-executor` ServiceAccount + Role |
 
 Networking and shared groups carry no suffix — longer lifecycle than the cluster. Globally unique names (Key Vault, Storage, ACR, Postgres) and the cluster carry a random 4-character suffix, kept in state.
 
@@ -40,7 +40,7 @@ az account set --subscription <subscription-id>
 
 Must be a user sign-in, not a service principal — the Postgres admin lookup and `principal_type = "User"` assume one.
 
-Region: `location` in [`defaults.auto.tfvars`](./defaults.auto.tfvars). `northeurope` is a placeholder.
+Region: `westeurope` (`location` in [`defaults.auto.tfvars`](./defaults.auto.tfvars)). Log Analytics and the Container Insights data collection rule are pinned to `northeurope` in code and must stay in the same region as each other.
 
 ## Deploy
 
@@ -60,7 +60,22 @@ make plan            # expect: no changes
 
 Kept out of Terraform so secrets never land in state, or because no azurerm resource covers it.
 
-- **Postgres roles for workload identities.** `workflow-service` and `argo` connect via Entra ID, but need database roles. As the Entra admin, create a role per managed identity (`pgaadauth_create_principal`) and grant it its database. **Unverified:** exact function arguments for managed identities.
+- **Argo executor token Secret.** Argo mounts it into the executor containers of agent pods. Legacy non-expiring token — kept out of Terraform state:
+
+  ```sh
+  kubectl apply -f - <<YAML
+  apiVersion: v1
+  kind: Secret
+  type: kubernetes.io/service-account-token
+  metadata:
+    name: argo-executor.service-account-token
+    namespace: agents
+    annotations:
+      kubernetes.io/service-account.name: argo-executor
+  YAML
+  ```
+
+- **Postgres roles for workload identities.** `workflow-service`, `argo-workflow-controller` and `argo-server` connect via Entra ID, but need database roles. As the Entra admin, create a role per managed identity (`pgaadauth_create_principal`) and grant it its database. **Unverified:** exact function arguments for managed identities.
 - **Key Vault secrets.** GitHub App private key for the token broker ([ADR-012](https://github.com/julie-ng/autonomous-agents-setup/blob/main/architecture/decisions/012-cloud-agent-identity.md)).
 
 ## Network
@@ -77,7 +92,7 @@ Kept out of Terraform so secrets never land in state, or because no azurerm reso
 |---|---|
 | Key Vault, both storage accounts | Public endpoint, default deny. Allowed: AKS subnet via service endpoint, `admin_ip_ranges`. |
 | PostgreSQL | Public endpoint, firewall: cluster egress IP, `admin_ip_ranges`. Flexible Server has no service endpoint support — traffic is not on the Azure backbone. |
-| ACR | Public endpoint. Basic SKU has no network rules. |
+| ACR | Public endpoint. Basic SKU has no network rules. Kubelet pulls; nothing in this repo or GitHub can push — images are pushed manually. |
 
 Egress: all cluster outbound traffic leaves via `aisdlc-egress-ip` (load balancer outbound IP). No egress filtering.
 

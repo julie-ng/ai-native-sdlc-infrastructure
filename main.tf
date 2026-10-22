@@ -87,11 +87,12 @@ module "cluster" {
   egress_ip_id        = module.networking.public_ips.egress.id
 
   # From shared
-  log_analytics_workspace_id = module.shared.log_analytics.id
-  container_registry_id      = module.shared.container_registry.id
-  key_vault_id               = module.shared.key_vault.id
-  artifacts_container_id     = module.shared.storage.artifacts.container_id
-  argo_container_id          = module.shared.storage.argo.container_id
+  log_analytics_workspace_id   = module.shared.log_analytics.id
+  container_registry_id        = module.shared.container_registry.id
+  key_vault_id                 = module.shared.key_vault.id
+  artifacts_container_id       = module.shared.storage.artifacts.container_id
+  artifacts_storage_account_id = module.shared.storage.artifacts.id
+  argo_container_id            = module.shared.storage.argo.container_id
 
   workload_identities = local.workload_identities
 }
@@ -132,9 +133,14 @@ locals {
       namespace        = "github-broker"
       service_accounts = ["token-broker"]
     }
-    argo = {
+    # Both read the workflow archive in Postgres
+    argo-workflow-controller = {
       namespace        = "argo"
-      service_accounts = ["argo-workflow-controller", "argo-server"] # both read the workflow archive
+      service_accounts = ["argo-workflow-controller"]
+    }
+    argo-server = {
+      namespace        = "argo"
+      service_accounts = ["argo-server"]
     }
   }
 }

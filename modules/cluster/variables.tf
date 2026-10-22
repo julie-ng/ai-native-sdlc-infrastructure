@@ -95,6 +95,11 @@ variable "artifacts_container_id" {
   type = string
 }
 
+variable "artifacts_storage_account_id" {
+  type        = string
+  description = "Scope for Storage Blob Delegator - user delegation keys are account-level."
+}
+
 variable "argo_container_id" {
   type = string
 }
@@ -110,7 +115,7 @@ variable "workload_identities" {
   description = "Managed identity per key, federated credential per service account."
 
   validation {
-    condition     = alltrue([for k in ["artifact-service", "token-broker", "argo"] : contains(keys(var.workload_identities), k)])
-    error_message = "Must include artifact-service, token-broker and argo - role assignments in _rbac.tf reference them."
+    condition     = alltrue([for k in ["artifact-service", "token-broker", "argo-workflow-controller", "argo-server"] : contains(keys(var.workload_identities), k)])
+    error_message = "Must include artifact-service, token-broker, argo-workflow-controller and argo-server - role assignments in _rbac.tf reference them."
   }
 }

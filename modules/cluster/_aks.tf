@@ -76,6 +76,11 @@ resource "azurerm_kubernetes_cluster" "aks" {
     }
   }
 
+  # Key Vault secrets as mounted files (Secrets Store CSI driver)
+  key_vault_secrets_provider {
+    secret_rotation_enabled = true
+  }
+
   # Container Insights, managed identity auth. Needs the data collection rule in _monitoring.tf
   oms_agent {
     log_analytics_workspace_id      = var.log_analytics_workspace_id

@@ -1,5 +1,5 @@
 name     = "aisdlc"
-location = "northeurope" # placeholder until region capacity is checked
+location = "westeurope" # monitoring is pinned to northeurope, see modules/shared/log-analytics.tf
 
 default_tags = {
   env  = "dev"

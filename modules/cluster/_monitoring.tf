@@ -22,10 +22,12 @@ locals {
   ]
 }
 
+# Must be in the Log Analytics workspace region, not the cluster region.
+# Keep in sync with modules/shared/log-analytics.tf
 resource "azurerm_monitor_data_collection_rule" "container_insights" {
-  name                = "MSCI-${var.location}-${azurerm_kubernetes_cluster.aks.name}" # naming convention used by AKS itself
+  name                = "MSCI-northeurope-${azurerm_kubernetes_cluster.aks.name}" # naming convention used by AKS itself
   resource_group_name = azurerm_resource_group.cluster_rg.name
-  location            = var.location # must match the workspace region
+  location            = "northeurope"
   description         = "DCR for Azure Monitor Container Insights"
   tags                = var.tags
 
