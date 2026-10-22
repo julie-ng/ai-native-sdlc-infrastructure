@@ -60,6 +60,14 @@ resource "azurerm_role_assignment" "artifact_service_on_blob" {
   principal_id         = azurerm_user_assigned_identity.workloads["artifact-service"].principal_id
 }
 
+# Argo controller + server - artifact repository (server reads for the UI, controller garbage-collects).
+# Workflow step pods (Argo executor) are NOT granted access - agent pods get no cloud identity (ADR-003).
+resource "azurerm_role_assignment" "argo_on_blob" {
+  role_definition_name = "Storage Blob Data Contributor"
+  scope                = var.argo_container_id
+  principal_id         = azurerm_user_assigned_identity.workloads["argo"].principal_id
+}
+
 # Token broker - read the GitHub App private key
 resource "azurerm_role_assignment" "token_broker_on_kv" {
   role_definition_name = "Key Vault Secrets User"

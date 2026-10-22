@@ -12,7 +12,7 @@ Apply one at a time, in this order. Each depends on the outputs of the ones befo
 | # | Module | Resource group | Creates |
 |---|---|---|---|
 | 1 | [`networking`](./modules/networking/) | `aisdlc-networking-rg` | VNet, `aks-nodes-subnet` (service endpoints: Key Vault, Storage), empty `AzureFirewallSubnet`, ingress + egress static IPs |
-| 2 | [`shared`](./modules/shared/) | `aisdlc-shared-rg` | PostgreSQL Flexible Server (`workflow`, `argo` DBs), Blob Storage (`artifacts`), Key Vault, ACR, Log Analytics |
+| 2 | [`shared`](./modules/shared/) | `aisdlc-shared-rg` | PostgreSQL Flexible Server (`workflow`, `argo` DBs), Blob Storage: `aisdlc{suffix}artifacts` (artifact service), `aisdlc{suffix}argo` (Argo artifact repository), Key Vault, ACR, Log Analytics |
 | 3 | [`cluster`](./modules/cluster/) | `aisdlc-{suffix}-rg` | AKS (`system` + `platform` pools), control-plane + kubelet identities, workload identities, Container Insights, role assignments |
 | 4 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents`; ServiceAccounts |
 
@@ -75,7 +75,7 @@ Kept out of Terraform so secrets never land in state, or because no azurerm reso
 
 | Service | Access |
 |---|---|
-| Key Vault, Storage | Public endpoint, default deny. Allowed: AKS subnet via service endpoint, `admin_ip_ranges`. |
+| Key Vault, both storage accounts | Public endpoint, default deny. Allowed: AKS subnet via service endpoint, `admin_ip_ranges`. |
 | PostgreSQL | Public endpoint, firewall: cluster egress IP, `admin_ip_ranges`. Flexible Server has no service endpoint support — traffic is not on the Azure backbone. |
 | ACR | Public endpoint. Basic SKU has no network rules. |
 

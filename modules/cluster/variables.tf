@@ -95,6 +95,10 @@ variable "artifacts_container_id" {
   type = string
 }
 
+variable "argo_container_id" {
+  type = string
+}
+
 # Workload identities
 # -------------------
 
@@ -106,7 +110,7 @@ variable "workload_identities" {
   description = "Managed identity per key, federated credential per service account."
 
   validation {
-    condition     = alltrue([for k in ["artifact-service", "token-broker"] : contains(keys(var.workload_identities), k)])
-    error_message = "Must include artifact-service and token-broker - role assignments in _rbac.tf reference them."
+    condition     = alltrue([for k in ["artifact-service", "token-broker", "argo"] : contains(keys(var.workload_identities), k)])
+    error_message = "Must include artifact-service, token-broker and argo - role assignments in _rbac.tf reference them."
   }
 }

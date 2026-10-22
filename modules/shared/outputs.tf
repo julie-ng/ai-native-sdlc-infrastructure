@@ -16,10 +16,13 @@ output "postgres" {
 
 output "storage" {
   value = {
-    name                   = azurerm_storage_account.storage.name
-    id                     = azurerm_storage_account.storage.id
-    primary_blob_endpoint  = azurerm_storage_account.storage.primary_blob_endpoint
-    artifacts_container_id = azurerm_storage_container.artifacts.id
+    for k, sa in azurerm_storage_account.storage : k => {
+      name                  = sa.name
+      id                    = sa.id
+      primary_blob_endpoint = sa.primary_blob_endpoint
+      container_name        = azurerm_storage_container.containers[k].name
+      container_id          = azurerm_storage_container.containers[k].id
+    }
   }
 }
 

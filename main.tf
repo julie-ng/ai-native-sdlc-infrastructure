@@ -90,7 +90,8 @@ module "cluster" {
   log_analytics_workspace_id = module.shared.log_analytics.id
   container_registry_id      = module.shared.container_registry.id
   key_vault_id               = module.shared.key_vault.id
-  artifacts_container_id     = module.shared.storage.artifacts_container_id
+  artifacts_container_id     = module.shared.storage.artifacts.container_id
+  argo_container_id          = module.shared.storage.argo.container_id
 
   workload_identities = local.workload_identities
 }

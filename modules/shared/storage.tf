@@ -1,10 +1,26 @@
 # ==============
 #  Blob Storage
 # ==============
-# Backs the artifact service (ADR-005). Agents never touch it directly.
+# Two accounts, same settings, separate access:
+#   artifacts - backs the artifact service (ADR-005). Agents never touch it directly.
+#   argo      - Argo Workflows artifact repository
+
+locals {
+  storage_accounts = {
+    artifacts = {
+      name      = "${local.name_squished}artifacts"
+      container = "artifacts"
+    }
+    argo = {
+      name      = "${local.name_squished}argo"
+      container = "argo"
+    }
+  }
+}
 
 resource "azurerm_storage_account" "storage" {
-  name                     = "${local.name_squished}storage"
+  for_each                 = local.storage_accounts
+  name                     = each.value.name
   resource_group_name      = azurerm_resource_group.shared_rg.name
   location                 = azurerm_resource_group.shared_rg.location
   account_tier             = "Standard"
@@ -27,8 +43,9 @@ resource "azurerm_storage_account" "storage" {
 }
 
 # Created via the management plane (storage_account_id), so the network rules above don't block Terraform.
-resource "azurerm_storage_container" "artifacts" {
-  name                  = "artifacts"
-  storage_account_id    = azurerm_storage_account.storage.id
+resource "azurerm_storage_container" "containers" {
+  for_each              = local.storage_accounts
+  name                  = each.value.container
+  storage_account_id    = azurerm_storage_account.storage[each.key].id
   container_access_type = "private"
 }
