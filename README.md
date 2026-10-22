@@ -14,10 +14,10 @@ Apply one at a time, in this order. Each depends on the outputs of the ones befo
 | 1 | [`networking`](./modules/networking/) | `ai-sdlc-networking-rg` | VNet, `aks-nodes-subnet` (service endpoints: Key Vault, Storage), empty `AzureFirewallSubnet`, ingress + egress static IPs |
 | 2 | [`shared`](./modules/shared/) | `ai-sdlc-shared-rg` | PostgreSQL Flexible Server (`workflow`, `argo` DBs), Blob Storage: `ai-sdlc{suffix}artifacts` (artifact service), `ai-sdlc{suffix}argo` (Argo artifact repository), Key Vault, ACR (pull only), Log Analytics (North Europe) |
 | 3 | [`identities`](./modules/identities/) | `ai-sdlc-identities-rg` | Persistent control-plane, kubelet and platform workload identities; role assignments for networking, ACR, Storage and Key Vault |
-| 4 | [`cluster`](./modules/cluster/) | `ai-sdlc-{suffix}-rg` | AKS (`system` + `platform` pools, Key Vault CSI driver), cluster-specific workload federation, Container Insights, cluster-admin role assignment |
+| 4 | [`cluster`](./modules/cluster/) | `ai-sdlc-cluster-rg` | AKS (`system` + `platform` pools, Key Vault CSI driver), cluster-specific workload federation, Container Insights, cluster-admin role assignment |
 | 5 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents`; ServiceAccounts; `argo-executor` ServiceAccount + Role |
 
-Networking, shared and identities groups carry no suffix — longer lifecycle than the cluster. Globally unique names (Key Vault, Storage, ACR, Postgres) and the cluster carry a random 4-character suffix, kept in state.
+Resource group names carry no random suffix. AKS creates its Azure-managed node resources in `ai-sdlc-aks-managed-rg`. Globally unique names (Key Vault, Storage, ACR, Postgres) and the cluster carry a random 4-character suffix, kept in state.
 
 ## Prerequisites
 
@@ -129,6 +129,7 @@ Written blind. Check on first apply:
 - `os_sku = "AzureLinux"`, `postgres_version = "17"`, VM sizes available in the chosen region.
 - Successful creation of PostgreSQL 17 with `B_Standard_B1ms` in `northeurope`. The human developer confirmed regional capabilities are available; server creation is still unverified.
 - The identities module creates role assignments before AKS creation, and a cluster rebuild preserves principal IDs and role assignments on shared resources while updating federation.
+- AKS accepts the custom node resource group name `ai-sdlc-aks-managed-rg` on creation.
 - Network Contributor on the egress IP is sufficient for the control plane to attach it.
 
 ## Docs

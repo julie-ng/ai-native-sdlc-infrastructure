@@ -3,7 +3,7 @@
 # ================
 
 resource "azurerm_resource_group" "cluster_rg" {
-  name     = "${local.name_suffixed}-rg"
+  name     = "${local.name}-cluster-rg"
   location = var.location
   tags     = var.tags
 }

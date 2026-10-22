@@ -6,7 +6,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
   name                = "${local.name_suffixed}-cluster"
   location            = azurerm_resource_group.cluster_rg.location
   resource_group_name = azurerm_resource_group.cluster_rg.name
-  node_resource_group = "${local.name_suffixed}-managed-rg" # instead of default MC_ prefix
+  node_resource_group = "${local.name}-aks-managed-rg" # instead of default MC_ prefix
   dns_prefix          = local.name_suffixed
   kubernetes_version  = var.kubernetes_version
   sku_tier            = "Free"

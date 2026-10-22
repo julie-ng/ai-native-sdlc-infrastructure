@@ -48,7 +48,7 @@ If an ADR and this repo disagree, flag it to the human developer. Don't silently
 
 - One root module calls `modules/networking`, `modules/shared`, `modules/identities`, `modules/cluster` and `modules/kubernetes`, applied in that order with `-target`. Dependencies flow through module outputs; add `depends_on` only where Terraform can't see the dependency.
 - Modules declare `required_providers` with version ranges, and contain no `provider` blocks.
-- **Naming:** `{name}-{type}` for long-lived groups (networking, shared, identities). Add `-{suffix}` for the cluster and for globally unique names. Hyphen-less names are squashed: `aisdlc{suffix}cr`.
+- **Naming:** `{name}-{type}` for resource groups, with no random suffix (including `{name}-cluster-rg` and `{name}-aks-managed-rg`). Add `-{suffix}` for the AKS cluster resource name and for globally unique names. Hyphen-less names are squashed: `aisdlc{suffix}cr`.
 - Files split by concern (`_aks.tf`, `_rbac.tf`, `_identities.tf`), with `# ====` banner comments.
 - Defaults go in `defaults.auto.tfvars`. Personal values (admin IPs) go in git-ignored `private.auto.tfvars`.
 - `prevent_destroy` on anything that outlives a cluster rebuild: static IPs, databases.
