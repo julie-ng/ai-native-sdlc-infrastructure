@@ -1,0 +1,23 @@
+{
+  "name": "Sandbox",
+  "image": "docker.io/julieio/agent-devcontainer:v0.3.0",
+  "remoteUser": "node",
+  "workspaceMount": "source=${localWorkspaceFolder},target=${localWorkspaceFolder},type=bind,consistency=cached",
+  "workspaceFolder": "${localWorkspaceFolder}",
+  "mounts": [
+    "source=${localEnv:HOME}/example/.env.agent,target=/example/.env.agent,type=bind,readonly"
+  ],
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.12"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": false
+    }
+  },
+  "dotfiles": {
+    "repository": "https://github.com/julie-ng/dotfiles.git",
+    "targetPath": "~/dotfiles",
+    "installCommand": "~/dotfiles/sync.sh --force"
+  }
+}
