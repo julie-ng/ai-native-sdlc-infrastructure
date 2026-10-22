@@ -13,10 +13,11 @@ Apply one at a time, in this order. Each depends on the outputs of the ones befo
 |---|---|---|---|
 | 1 | [`networking`](./modules/networking/) | `ai-sdlc-networking-rg` | VNet, `aks-nodes-subnet` (service endpoints: Key Vault, Storage), empty `AzureFirewallSubnet`, ingress + egress static IPs |
 | 2 | [`shared`](./modules/shared/) | `ai-sdlc-shared-rg` | PostgreSQL Flexible Server (`workflow`, `argo` DBs), Blob Storage: `ai-sdlc{suffix}artifacts` (artifact service), `ai-sdlc{suffix}argo` (Argo artifact repository), Key Vault, ACR (pull only), Log Analytics (North Europe) |
-| 3 | [`cluster`](./modules/cluster/) | `ai-sdlc-{suffix}-rg` | AKS (`system` + `platform` pools, Key Vault CSI driver), control-plane + kubelet identities, workload identities, Container Insights, role assignments |
-| 4 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents`; ServiceAccounts; `argo-executor` ServiceAccount + Role |
+| 3 | [`identities`](./modules/identities/) | `ai-sdlc-identities-rg` | Persistent control-plane, kubelet and platform workload identities; networking, ACR, Storage and Key Vault grants |
+| 4 | [`cluster`](./modules/cluster/) | `ai-sdlc-{suffix}-rg` | AKS (`system` + `platform` pools, Key Vault CSI driver), cluster-specific workload federation, Container Insights, cluster-admin role assignment |
+| 5 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents`; ServiceAccounts; `argo-executor` ServiceAccount + Role |
 
-Networking and shared groups carry no suffix — longer lifecycle than the cluster. Globally unique names (Key Vault, Storage, ACR, Postgres) and the cluster carry a random 4-character suffix, kept in state.
+Networking, shared and identities groups carry no suffix — longer lifecycle than the cluster. Globally unique names (Key Vault, Storage, ACR, Postgres) and the cluster carry a random 4-character suffix, kept in state.
 
 ## Prerequisites
 
@@ -50,6 +51,7 @@ az account set --subscription <subscription-id>
 make init
 make plan-networking && make apply
 make plan-shared     && make apply
+make plan-identities && make apply
 make plan-cluster    && make apply
 make kubecontext
 make plan-kubernetes && make apply
@@ -57,6 +59,11 @@ make plan            # expect: no changes
 ```
 
 `-target` is used for staging only. The final untargeted `plan` confirms nothing was missed.
+
+Identities and their shared-resource grants survive cluster rebuilds; retain the deployment suffix. Cluster recreation updates workload federation to its OIDC issuer. Identity resources and their group have `prevent_destroy` guards.
+
+> [!IMPORTANT]
+> Before applying this module split, discard any earlier saved plan and generate a fresh one. `moved.tf` preserves Terraform addresses, but existing identities in the cluster resource group would still require replacement to use the new group; `prevent_destroy` blocks that replacement. If identities have already been deployed, review a separate migration before applying.
 
 > [!NOTE]
 > **Regions**: Defaults to `westeurope`; see [`defaults.auto.tfvars`](./defaults.auto.tfvars). PostgreSQL is pinned to `northeurope` because this subscription cannot provision it in West Europe. Log Analytics and the Container Insights data collection rule are also pinned to `northeurope` and must share a region.
@@ -121,6 +128,7 @@ Written blind. Check on first apply:
 - `azurerm_storage_container.id` is the ARM resource ID, usable as a role assignment scope.
 - `os_sku = "AzureLinux"`, `postgres_version = "17"`, VM sizes available in the chosen region.
 - Successful creation of PostgreSQL 17 with `B_Standard_B1ms` in `northeurope`. The human developer confirmed regional capabilities are available; server creation is still unverified.
+- The identities module grants access before AKS creation, and a cluster rebuild preserves principal IDs and shared-resource grants while updating federation.
 - Network Contributor on the egress IP is sufficient for the control plane to attach it.
 
 ## Docs

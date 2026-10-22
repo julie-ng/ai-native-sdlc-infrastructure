@@ -28,13 +28,13 @@ resource "azurerm_kubernetes_cluster" "aks" {
 
   identity {
     type         = "UserAssigned"
-    identity_ids = [azurerm_user_assigned_identity.control_plane_mi.id]
+    identity_ids = [var.control_plane_identity.id]
   }
 
   kubelet_identity {
-    client_id                 = azurerm_user_assigned_identity.kubelet_mi.client_id
-    object_id                 = azurerm_user_assigned_identity.kubelet_mi.principal_id
-    user_assigned_identity_id = azurerm_user_assigned_identity.kubelet_mi.id
+    client_id                 = var.kubelet_identity.client_id
+    object_id                 = var.kubelet_identity.principal_id
+    user_assigned_identity_id = var.kubelet_identity.id
   }
 
   # Node pools are defined explicitly - no node auto-provisioning
@@ -94,10 +94,4 @@ resource "azurerm_kubernetes_cluster" "aks" {
       kubernetes_version,                        # automatic upgrades
     ]
   }
-
-  depends_on = [
-    azurerm_role_assignment.control_plane_on_kubelet_mi,
-    azurerm_role_assignment.control_plane_on_nodes_subnet,
-    azurerm_role_assignment.control_plane_on_egress_ip,
-  ]
 }

@@ -19,13 +19,16 @@ plan-networking:
 plan-shared:
 	terraform plan -target=module.shared -out plan.tfplan
 
+plan-identities:
+	terraform plan -target=module.identities -out plan.tfplan
+
 plan-cluster:
 	terraform plan -target=module.cluster -out plan.tfplan
 
 plan-kubernetes:
 	terraform plan -target=module.kubernetes -out plan.tfplan
 
-# Full plan - should show no changes once all four steps are applied
+# Full plan - should show no changes once all five steps are applied
 plan:
 	terraform plan -out plan.tfplan
 

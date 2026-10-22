@@ -5,7 +5,7 @@ variable "name" {
 
 variable "suffix" {
   type        = string
-  description = "Appended to cluster resources and workload identities."
+  description = "Appended to cluster resources."
 }
 
 variable "location" {
@@ -83,27 +83,6 @@ variable "log_analytics_workspace_id" {
   type = string
 }
 
-variable "container_registry_id" {
-  type = string
-}
-
-variable "key_vault_id" {
-  type = string
-}
-
-variable "artifacts_container_id" {
-  type = string
-}
-
-variable "artifacts_storage_account_id" {
-  type        = string
-  description = "Scope for Storage Blob Delegator - user delegation keys are account-level."
-}
-
-variable "argo_container_id" {
-  type = string
-}
-
 # Workload identities
 # -------------------
 
@@ -112,10 +91,30 @@ variable "workload_identities" {
     namespace        = string
     service_accounts = list(string)
   }))
-  description = "Managed identity per key, federated credential per service account."
+  description = "ServiceAccounts trusted by each platform workload identity."
+}
 
-  validation {
-    condition     = alltrue([for k in ["artifact-service", "token-broker", "argo-workflow-controller", "argo-server"] : contains(keys(var.workload_identities), k)])
-    error_message = "Must include artifact-service, token-broker, argo-workflow-controller and argo-server - role assignments in _rbac.tf reference them."
-  }
+# From identities module
+# ----------------------
+
+variable "control_plane_identity" {
+  type = object({
+    id           = string
+    name         = string
+    client_id    = string
+    principal_id = string
+  })
+}
+
+variable "kubelet_identity" {
+  type = object({
+    id           = string
+    name         = string
+    client_id    = string
+    principal_id = string
+  })
+}
+
+variable "workload_identity_ids" {
+  type = map(string)
 }
