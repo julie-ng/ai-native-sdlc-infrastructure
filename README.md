@@ -3,7 +3,7 @@
 Terraform for the AI SDLC platform on Azure: one AKS cluster plus the backing services it needs. Single environment (dev).
 
 > [!IMPORTANT]
-> First pass written without Azure access. Passes `terraform validate` and `tflint`; **never planned or applied**. See [Unverified](#unverified).
+> All five infrastructure modules were deployed successfully by the human developer on 2026-10-22. Platform services and workflows have not been tested. Agents verify offline only; see [Unverified](#unverified).
 
 ## Modules
 
@@ -54,7 +54,7 @@ make plan-shared     && make apply
 make plan-identities && make apply
 make plan-cluster    && make apply
 make kubecontext
-make plan-k8s && make apply
+make plan-k8s        && make apply
 make plan            # expect: no changes
 ```
 
@@ -79,7 +79,7 @@ make stop-cluster
 make start-cluster
 ```
 
-These run `az aks stop` / `az aks start` using the resource group and cluster name from `terraform output -json cluster`. They wait for Azure to complete the operation. Missing outputs stop the command before Azure is called. Backing services such as PostgreSQL remain running and bill separately.
+These run `az aks stop` / `az aks start` using the resource group and cluster name from `terraform output -json cluster`. They wait for Azure to complete the operation. Missing outputs stop the command before Azure is called. Backing services such as PostgreSQL remain running and bill separately. Start the cluster before running Terraform against Kubernetes resources.
 
 [AKS stop/start considerations](https://learn.microsoft.com/en-us/azure/aks/start-stop-cluster): stopping releases capacity, so restart is subject to availability. After stopping, Microsoft advises waiting 15–30 minutes before starting again. Standalone pods are deleted during stop; controller-managed workloads are restored on start.
 
@@ -91,7 +91,7 @@ These run `az aks stop` / `az aks start` using the resource group and cluster na
 | `platform` | `Standard_D2s_v5` | 1 | 2 |
 | `agents` | `Standard_D4s_v5` | 1 | 2 |
 
-The human developer retains one D2s v5 system node for the POC; Azure acceptance remains unverified until apply.
+The human developer reported successful deployment with this POC sizing on 2026-10-22. This is provisioning evidence for this subscription/region, not a production sizing recommendation.
 
 All pools autoscale within these bounds. For the POC, use [AKS cluster start/stop](https://learn.microsoft.com/en-us/azure/aks/start-stop-cluster) when idle. Stopping releases capacity, so restarting remains subject to regional availability. User-pool scale-to-zero is a [deferred target design (#3)](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/3); no application wake-up infrastructure is included.
 
@@ -116,7 +116,7 @@ Apply the workspace cap with `make plan-shared` / `make apply` before the cluste
 
 ### Kubernetes Namespaces
 
-Namespaces form part of the security boundary, enforced through ServiceAccounts, RBAC and Azure Workload Identity. The GitHub broker has its own namespace to isolate its ServiceAccount and Key Vault secret mounts, including the GitHub App private key.
+The four namespaces separate platform services, Argo, the GitHub broker and agent workflows. The broker has its own ServiceAccount and Key Vault secret mounts, including the GitHub App private key.
 
 | Namespace | What goes here |
 |---|---|
@@ -145,7 +145,7 @@ Kept out of Terraform so secrets never land in state, or because no azurerm reso
   ```
 
 - **Postgres roles for workload identities.** `workflow-service`, `argo-workflow-controller` and `argo-server` connect via Entra ID, but need database roles. As the Entra admin, create a role per managed identity (`pgaadauth_create_principal`) and grant it its database. **Unverified:** exact function arguments for managed identities.
-- **Key Vault secrets.** GitHub App private key for the token broker ([ADR-012](https://github.com/julie-ng/autonomous-agents-setup/blob/main/architecture/decisions/012-cloud-agent-identity.md)).
+- **Key Vault secrets.** GitHub App private key for the token broker ([ADR-012](https://github.com/julie-ng/ai-native-sdlc/blob/main/architecture/decisions/012-cloud-agent-identity.md)).
 
 ## Network
 
@@ -159,27 +159,25 @@ Kept out of Terraform so secrets never land in state, or because no azurerm reso
 
 | Service | Access |
 |---|---|
-| Key Vault, both storage accounts | Public endpoint, default deny. Allowed: AKS subnet via service endpoint, `admin_ip_ranges`. |
-| PostgreSQL | Public endpoint, firewall: cluster egress IP, `admin_ip_ranges`. Flexible Server has no service endpoint support — traffic is not on the Azure backbone. |
+| Key Vault, both storage accounts | Public endpoint, default deny. Allow AKS subnet via service endpoint and `admin_ip_ranges`; trusted Azure service bypass is also enabled. Authentication and role assignments still apply. |
+| PostgreSQL | Public endpoint, firewall: cluster egress IP, `admin_ip_ranges`. Flexible Server has no service endpoint support. Public endpoint does not imply public-internet routing between Azure services; see [Microsoft global network](https://learn.microsoft.com/en-us/azure/networking/microsoft-global-network). |
 | ACR | Public endpoint. Basic SKU has no network rules. Kubelet pulls; nothing in this repo or GitHub can push — images are pushed manually. |
 
 Egress: all cluster outbound traffic leaves via `ai-sdlc-egress-ip` (load balancer outbound IP). No egress filtering.
 
 ## Unverified
 
-Written blind. Check on first apply:
+Provisioning confirmed by the human developer on 2026-10-22: networking, shared services (including PostgreSQL 17/B1ms in North Europe), identities and role assignments, all three AKS pools, and the Kubernetes module. The custom resource groups and staged applies were accepted. No Azure or cluster commands were run by the agent to independently verify runtime behavior.
 
-- `make start-cluster` / `make stop-cluster` resolve the saved outputs and complete successfully against Azure; only command construction and failure handling were checked offline.
-- `-target=module.networking` / `module.shared` plans succeed even though the `kubernetes` provider is configured from cluster outputs that don't exist yet.
-- `kube_config[0].host` and `cluster_ca_certificate` are populated with local accounts disabled.
-- `azurerm_storage_container.id` is the ARM resource ID, usable as a role assignment scope.
-- `os_sku = "AzureLinux"`, `postgres_version = "17"`, VM sizes available in the chosen region.
-- Successful creation of PostgreSQL 17 with `B_Standard_B1ms` in `northeurope`. The human developer confirmed regional capabilities are available; server creation is still unverified.
-- The identities module creates role assignments before AKS creation, and a cluster rebuild preserves principal IDs and role assignments on shared resources while updating federation.
-- The DCR collects only the three selected tables; the agent applies namespace/event filters after `module.kubernetes` is applied; the workspace cap and actual ingestion volume behave as documented.
-- All three node pools provision with their configured sizes; workload templates select the intended pools and tolerate the agent taint.
-- AKS accepts the custom node resource group name `ai-sdlc-aks-managed-rg` on creation.
-- Network Contributor on the egress IP is sufficient for the control plane to attach it.
+POC verification checklist (results reported by the human developer):
+
+- [x] `make stop-cluster` completes successfully.
+- [x] Final untargeted `make plan` shows no pending changes after all stages.
+- [x] `make start-cluster`, node readiness, and `make kubecontext` after restart. Start the cluster before planning or applying Kubernetes resources.
+- [ ] Workload identity authentication to Blob, Key Vault and PostgreSQL, including the manual database roles and Kubernetes workload labels.
+- [ ] First workflow execution, Argo executor token mounts/RBAC, agent pool selection/tolerations, and no Argo artifact uploads from agent steps in the POC.
+- [ ] Monitoring table selection, ConfigMap filters, observed ingestion volume and cap behavior. Successful resource deployment does not prove logs are flowing or filtering correctly.
+- [ ] Identity continuity across a cluster rebuild; this lifecycle has not been exercised yet.
 
 ## Docs
 
