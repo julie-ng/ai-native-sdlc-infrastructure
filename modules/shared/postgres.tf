@@ -11,7 +11,7 @@
 resource "azurerm_postgresql_flexible_server" "postgres" {
   name                          = "${local.name_suffixed}-psql"
   resource_group_name           = azurerm_resource_group.shared_rg.name
-  location                      = azurerm_resource_group.shared_rg.location
+  location                      = "northeurope" # Subscription cannot provision PostgreSQL in West Europe.
   version                       = var.postgres_version
   sku_name                      = var.postgres_sku_name
   storage_mb                    = 32768

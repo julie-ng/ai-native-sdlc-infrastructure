@@ -59,7 +59,7 @@ make plan            # expect: no changes
 `-target` is used for staging only. The final untargeted `plan` confirms nothing was missed.
 
 > [!NOTE]
-> **Regions**: Defaults to `westeurope` see [`defaults.auto.tfvars`](./defaults.auto.tfvars). Log Analytics and the Container Insights must be in same region. Due to Microsoft data center capacity constraints data collection rule are pinned to `northeurope`.
+> **Regions**: Defaults to `westeurope`; see [`defaults.auto.tfvars`](./defaults.auto.tfvars). PostgreSQL is pinned to `northeurope` because this subscription cannot provision it in West Europe. Log Analytics and the Container Insights data collection rule are also pinned to `northeurope` and must share a region.
 
 ### Kubernetes Namespaces
 
@@ -120,6 +120,7 @@ Written blind. Check on first apply:
 - `kube_config[0].host` and `cluster_ca_certificate` are populated with local accounts disabled.
 - `azurerm_storage_container.id` is the ARM resource ID, usable as a role assignment scope.
 - `os_sku = "AzureLinux"`, `postgres_version = "17"`, VM sizes available in the chosen region.
+- Successful creation of PostgreSQL 17 with `B_Standard_B1ms` in `northeurope`. The human developer confirmed regional capabilities are available; server creation is still unverified.
 - Network Contributor on the egress IP is sufficient for the control plane to attach it.
 
 ## Docs

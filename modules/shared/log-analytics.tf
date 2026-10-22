@@ -3,7 +3,7 @@
 # ===============
 # Destination for Container Insights (cluster module).
 
-# Pinned to North Europe; everything else follows var.location (West Europe).
+# Pinned to North Europe; PostgreSQL has its own regional exception too.
 # The Container Insights DCR must be in the same region - see modules/cluster/_monitoring.tf
 resource "azurerm_log_analytics_workspace" "logs" {
   name                = "${local.name}-log-analytics"

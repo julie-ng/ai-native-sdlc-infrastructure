@@ -1,5 +1,5 @@
 name     = "ai-sdlc"
-location = "westeurope" # monitoring is pinned to northeurope, see modules/shared/log-analytics.tf
+location = "westeurope" # PostgreSQL and monitoring are pinned to northeurope; see docs/decisions.md.
 
 default_tags = {
   env  = "dev"
