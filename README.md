@@ -13,7 +13,7 @@ Apply one at a time, in this order. Each depends on the outputs of the ones befo
 |---|---|---|---|
 | 1 | [`networking`](./modules/networking/) | `ai-sdlc-networking-rg` | VNet, `aks-nodes-subnet` (service endpoints: Key Vault, Storage), empty `AzureFirewallSubnet`, ingress + egress static IPs |
 | 2 | [`shared`](./modules/shared/) | `ai-sdlc-shared-rg` | PostgreSQL Flexible Server (`workflow`, `argo` DBs), Blob Storage: `ai-sdlc{suffix}artifacts` (artifact service), `ai-sdlc{suffix}argo` (Argo artifact repository), Key Vault, ACR (pull only), Log Analytics (North Europe) |
-| 3 | [`identities`](./modules/identities/) | `ai-sdlc-identities-rg` | Persistent control-plane, kubelet and platform workload identities; networking, ACR, Storage and Key Vault grants |
+| 3 | [`identities`](./modules/identities/) | `ai-sdlc-identities-rg` | Persistent control-plane, kubelet and platform workload identities; role assignments for networking, ACR, Storage and Key Vault |
 | 4 | [`cluster`](./modules/cluster/) | `ai-sdlc-{suffix}-rg` | AKS (`system` + `platform` pools, Key Vault CSI driver), cluster-specific workload federation, Container Insights, cluster-admin role assignment |
 | 5 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents`; ServiceAccounts; `argo-executor` ServiceAccount + Role |
 
@@ -60,7 +60,7 @@ make plan            # expect: no changes
 
 `-target` is used for staging only. The final untargeted `plan` confirms nothing was missed.
 
-Managed identity names have no random suffix. Identities and their shared-resource grants survive cluster rebuilds. Cluster recreation updates workload federation to its OIDC issuer. Identity resources and their group have `prevent_destroy` guards.
+Managed identity names have no random suffix. Identities and their role assignments on shared resources survive cluster rebuilds. Cluster recreation updates workload federation to its OIDC issuer. Identity resources and their group have `prevent_destroy` guards.
 
 > [!IMPORTANT]
 > Before applying this module split, discard any earlier saved plan and generate a fresh one. `moved.tf` preserves Terraform addresses, but existing identities in the cluster resource group would still require replacement to use the new group; `prevent_destroy` blocks that replacement. If identities have already been deployed, review a separate migration before applying.
@@ -128,7 +128,7 @@ Written blind. Check on first apply:
 - `azurerm_storage_container.id` is the ARM resource ID, usable as a role assignment scope.
 - `os_sku = "AzureLinux"`, `postgres_version = "17"`, VM sizes available in the chosen region.
 - Successful creation of PostgreSQL 17 with `B_Standard_B1ms` in `northeurope`. The human developer confirmed regional capabilities are available; server creation is still unverified.
-- The identities module grants access before AKS creation, and a cluster rebuild preserves principal IDs and shared-resource grants while updating federation.
+- The identities module creates role assignments before AKS creation, and a cluster rebuild preserves principal IDs and role assignments on shared resources while updating federation.
 - Network Contributor on the egress IP is sufficient for the control plane to attach it.
 
 ## Docs

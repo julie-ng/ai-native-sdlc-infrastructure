@@ -8,7 +8,7 @@ Design reasoning lives in the [ADRs](https://github.com/julie-ng/autonomous-agen
 |---|---|---|
 | 2026-10-22 | Name platform service identities `{service}-mi` | Human decision: `workload` is redundant in the resource name; retain each service name and the managed identity type suffix. |
 | 2026-10-22 | Remove the deployment suffix from all managed identity names and the identities module inputs | Human decision: identity names only need uniqueness within their resource group. Supersedes suffix retention for identities in the module split below. [Azure naming rules](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules#microsoftmanagedidentity). |
-| 2026-10-22 | Add persistent `identities` module and resource group before `cluster`; protect principals with `prevent_destroy` | Preserve principals and shared-resource grants across cluster rebuilds. Federation and cluster-scoped RBAC stay in `cluster`. Retain the deployment suffix. Existing identities require migration review. [AKS identity lifecycle](https://learn.microsoft.com/en-us/azure/aks/managed-identity-overview), [Terraform refactoring](https://developer.hashicorp.com/terraform/language/modules/develop/refactoring). |
+| 2026-10-22 | Add persistent `identities` module and resource group before `cluster`; protect principals with `prevent_destroy` | Preserve principals and role assignments on shared resources across cluster rebuilds. Federation and cluster-scoped RBAC stay in `cluster`. Retain the deployment suffix. Existing identities require migration review. [AKS identity lifecycle](https://learn.microsoft.com/en-us/azure/aks/managed-identity-overview), [Terraform refactoring](https://developer.hashicorp.com/terraform/language/modules/develop/refactoring). |
 | 2026-10-22 | One environment, `dev`; base name `aisdlc`, no env in names | POC. |
 | 2026-10-22 | One root module calling four modules: networking, shared, cluster, kubernetes. Applied one at a time with `-target` | Staged rollout while testing; one state. Replaces the earlier separate-repo split. |
 | 2026-10-22 | Local state | Blind first pass; remote backend later. |
@@ -33,8 +33,8 @@ Design reasoning lives in the [ADRs](https://github.com/julie-ng/autonomous-agen
 | 2026-10-22 | ACR pull only | Images are built and pushed manually. No identity in this repo, the cluster or GitHub gets push. |
 | 2026-10-22 | No Managed Prometheus or Grafana | Cost. Container Insights + Log Analytics only. |
 | 2026-10-22 | Key Vault CSI driver add-on on, secret rotation enabled | Secrets as mounted files ("credentials as files, never env vars", ADR-006). |
-| 2026-10-22 | HMAC key for platform-service tokens lives in Key Vault | Details deferred to the workflow service design. No grants yet. |
-| 2026-10-22 | Agents receive artifacts as user delegation SAS URLs, scoped per blob and per permission | Signed with the artifact service's Entra credentials (Storage Blob Delegator at account scope), so shared keys stay off. A SAS can't exceed the signer's container-scoped Data Contributor grant. Key and SAS valid ≤ 7 days ([docs](https://learn.microsoft.com/en-us/rest/api/storageservices/create-user-delegation-sas)). HMAC tokens remain for status updates to the artifact service. |
+| 2026-10-22 | HMAC key for platform-service tokens lives in Key Vault | Details deferred to the workflow service design. No role assignments yet. |
+| 2026-10-22 | Agents receive artifacts as user delegation SAS URLs, scoped per blob and per permission | Signed with the artifact service's Entra credentials (Storage Blob Delegator at account scope), so shared keys stay off. A SAS can't exceed the signer's container-scoped Data Contributor role assignment. Key and SAS valid ≤ 7 days ([docs](https://learn.microsoft.com/en-us/rest/api/storageservices/create-user-delegation-sas)). HMAC tokens remain for status updates to the artifact service. |
 | 2026-10-22 | `argo-executor` ServiceAccount + Role (`workflowtaskresults` create, patch) in `agents`; token Secret created by kubectl | Argo requires `executor.serviceAccountName` when automount is off and mounts its token into `init` / `wait` only (`workflow/controller/workflowpod.go`). It reads Secret `argo-executor.service-account-token` (`TokenNameForServiceAccount`). Kept out of Terraform so the token isn't in state. |
 | 2026-10-22 | No secrets in Terraform | Values would land in state. Added manually after apply. |
 | 2026-10-22 | azurerm `~> 5.10`, kubernetes `~> 3.4` | Latest at time of writing. 5.x renames several arguments and requires `node_provisioning_profile` on AKS. |
@@ -51,8 +51,8 @@ Design reasoning lives in the [ADRs](https://github.com/julie-ng/autonomous-agen
 | Storage LRS, Postgres Burstable, no HA | Cost. |
 | `argo` storage account unused by agent steps in the POC | Only the Argo controller and server identity has access. Workflow templates must not set `archiveLogs` or output artifacts on agent steps, or the executor fails to upload. |
 | Agent step logs outlive the pod only via Container Insights | DCR collects `ContainerLogV2` from all namespaces into Log Analytics, 30-day retention. Agent output lands there too. |
-| Non-expiring Kubernetes token in agent pods' executor containers | Legacy ServiceAccount token Secret, as Argo requires. Grants only `create` / `patch` on `workflowtaskresults` in `agents`. Not mounted into `main`. |
-| Pods can reach the node's kubelet identity (AcrPull) via instance metadata | Accepted: pulling images grants no credentials. Not verified on AKS. |
+| Non-expiring Kubernetes token in agent pods' executor containers | Legacy ServiceAccount token Secret, as Argo requires. Allows only `create` / `patch` on `workflowtaskresults` in `agents`. Not mounted into `main`. |
+| Pods can reach the node's kubelet identity (AcrPull) via instance metadata | Accepted: pulling images provides no credentials. Not verified on AKS. |
 
 ## Not carried over from cloudkube
 
