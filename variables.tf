@@ -7,8 +7,8 @@ variable "name" {
   description = "Base name for all resources, e.g. `ai-sdlc`."
 
   validation {
-    condition     = can(regex("^[a-z][a-z0-9]{1,9}$", var.name))
-    error_message = "Lowercase alphanumeric, 2-10 characters. Squashed into storage account and registry names, which allow no dashes."
+    condition     = can(regex("^[a-z][a-z0-9-]{0,8}[a-z0-9]$", var.name))
+    error_message = "Use 2-10 lowercase letters, digits or dashes; start with a letter and end with a letter or digit."
   }
 }
 
