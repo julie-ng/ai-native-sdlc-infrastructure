@@ -35,6 +35,14 @@ plan:
 apply:
 	terraform apply plan.tfplan
 
+.PHONY: start-cluster stop-cluster
+start-cluster stop-cluster:
+	@set -eu; \
+	cluster_summary="$$(terraform output -json summary)"; \
+	cluster_rg="$$(printf '%s\n' "$$cluster_summary" | jq -er '.cluster.resource_group.name | select(type == "string" and length > 0)')"; \
+	cluster_name="$$(printf '%s\n' "$$cluster_summary" | jq -er '.cluster.aks_cluster.name | select(type == "string" and length > 0)')"; \
+	az aks $(patsubst %-cluster,%,$@) --resource-group "$$cluster_rg" --name "$$cluster_name"
+
 kubecontext:
 	az aks get-credentials \
 		--resource-group $$(terraform output -json summary | jq -r .cluster.resource_group.name) \

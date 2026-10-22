@@ -68,6 +68,19 @@ Managed identity names have no random suffix. Identities and their role assignme
 > [!NOTE]
 > **Regions**: Defaults to `westeurope`; see [`defaults.auto.tfvars`](./defaults.auto.tfvars). PostgreSQL is pinned to `northeurope` because this subscription cannot provision it in West Europe. Log Analytics and the Container Insights data collection rule are also pinned to `northeurope` and must share a region.
 
+### Start and stop the cluster
+
+After a successful deployment, with the local Terraform state available and Azure CLI signed into the deployment subscription:
+
+```sh
+make stop-cluster
+make start-cluster
+```
+
+These run `az aks stop` / `az aks start` using the resource group and cluster name from `terraform output -json summary`. They wait for Azure to complete the operation. Missing outputs stop the command before Azure is called. Backing services such as PostgreSQL remain running and bill separately.
+
+[AKS stop/start considerations](https://learn.microsoft.com/en-us/azure/aks/start-stop-cluster): stopping releases capacity, so restart is subject to availability. After stopping, Microsoft advises waiting 15–30 minutes before starting again. Standalone pods are deleted during stop; controller-managed workloads are restored on start.
+
 ### Node pools
 
 | Pool | VM size | Minimum nodes | Maximum nodes |
@@ -154,6 +167,7 @@ Egress: all cluster outbound traffic leaves via `ai-sdlc-egress-ip` (load balanc
 
 Written blind. Check on first apply:
 
+- `make start-cluster` / `make stop-cluster` resolve the saved outputs and complete successfully against Azure; only command construction and failure handling were checked offline.
 - `-target=module.networking` / `module.shared` plans succeed even though the `kubernetes` provider is configured from cluster outputs that don't exist yet.
 - `kube_config[0].host` and `cluster_ca_certificate` are populated with local accounts disabled.
 - `azurerm_storage_container.id` is the ARM resource ID, usable as a role assignment scope.
