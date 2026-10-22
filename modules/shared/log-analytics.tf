@@ -11,5 +11,7 @@ resource "azurerm_log_analytics_workspace" "logs" {
   location            = "northeurope"
   sku                 = "PerGB2018"
   retention_in_days   = 30
-  tags                = var.tags
+  # POC backstop, not a hard spending limit; collection can overshoot and then stops until reset.
+  daily_quota_gb = 0.1
+  tags           = var.tags
 }

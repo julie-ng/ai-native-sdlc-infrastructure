@@ -15,7 +15,7 @@ Apply one at a time, in this order. Each depends on the outputs of the ones befo
 | 2 | [`shared`](./modules/shared/) | `ai-sdlc-shared-rg` | PostgreSQL Flexible Server (`workflow`, `argo` DBs), Blob Storage: `ai-sdlc{suffix}artifacts` (artifact service), `ai-sdlc{suffix}argo` (Argo artifact repository), Key Vault, ACR (pull only), Log Analytics (North Europe) |
 | 3 | [`identities`](./modules/identities/) | `ai-sdlc-identities-rg` | Persistent control-plane, kubelet and platform workload identities; role assignments for networking, ACR, Storage and Key Vault |
 | 4 | [`cluster`](./modules/cluster/) | `ai-sdlc-cluster-rg` | AKS (`system`, `platform` and `agents` pools, Key Vault CSI driver), cluster-specific workload federation, Container Insights, cluster-admin role assignment |
-| 5 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents`; ServiceAccounts; `argo-executor` ServiceAccount + Role |
+| 5 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents`; ServiceAccounts; `argo-executor` ServiceAccount + Role; monitor agent ConfigMap |
 
 Resource group names carry no random suffix. AKS creates its Azure-managed node resources in `ai-sdlc-aks-managed-rg`. Globally unique names (Key Vault, Storage, ACR, Postgres) and the cluster carry a random 4-character suffix, kept in state.
 
@@ -76,12 +76,28 @@ Managed identity names have no random suffix. Identities and their role assignme
 | `platform` | `Standard_D2s_v5` | 1 | 2 |
 | `agents` | `Standard_D4s_v5` | 1 | 2 |
 
-> [!IMPORTANT]
-> System-pool sizing is unverified: the requested POC configuration uses one D2s v5 node, but [current AKS system-pool documentation](https://learn.microsoft.com/en-us/azure/aks/use-system-pools) lists at least two nodes and a VM size with at least 4 vCPUs. The configured D2s v5 has 2 vCPUs. Resolve this discrepancy before applying.
+The human developer retains one D2s v5 system node for the POC; Azure acceptance remains unverified until apply.
 
 All pools autoscale within these bounds. For the POC, use [AKS cluster start/stop](https://learn.microsoft.com/en-us/azure/aks/start-stop-cluster) when idle. Stopping releases capacity, so restarting remains subject to regional availability. User-pool scale-to-zero is a [deferred target design (#3)](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/3); no application wake-up infrastructure is included.
 
 Workload manifests must select `kubernetes.azure.com/agentpool: platform` for platform services or `kubernetes.azure.com/agentpool: agents` for agent pods. Agent pods must also tolerate `workload=agents:NoSchedule`. These scheduling settings do not provide a security isolation boundary. Workload templates are maintained outside this repo.
+
+### Monitoring costs
+
+| Control | POC setting |
+|---|---|
+| Workspace retention | 30 days; no extended retention configured |
+| Daily ingestion cap | 0.1 GB/day (about 100 MB), workspace-wide |
+| Collected tables | `ContainerLogV2`, `KubeEvents`, `KubePodInventory` |
+| Pod inventory | Every 5 minutes, for `platform`, `argo`, `github-broker`, `agents` |
+| Kubernetes events | Non-Normal events in those four namespaces; event-driven |
+| Container logs | stdout and stderr; exclude `kube-system`, `gatekeeper-system`, `azure-arc`, `kube-public`, `kube-node-lease`, `calico-system`, `default` at the agent |
+
+The [logs/events preset](https://learn.microsoft.com/en-us/azure/azure-monitor/containers/kubernetes-monitoring-enable#configuration-options) keeps troubleshooting data without ingesting `Perf`, `InsightsMetrics`, or the extra inventory tables. Inventory is sampled more slowly; this does not throttle container logs or events. Historical CPU/memory charts and full Container Insights visualizations are not provided by this configuration. No Managed Prometheus, Grafana, syslog, or AKS audit/control-plane log export is enabled by this repo.
+
+[Retention below 31 days does not reduce Analytics ingestion charges](https://learn.microsoft.com/en-us/azure/azure-monitor/logs/data-retention-configure). The [daily cap](https://learn.microsoft.com/en-us/azure/azure-monitor/logs/daily-cap) is a backstop, not a hard spending limit: overshoot is billable, and collection stops until the workspace reset. 0.1 GB/day is an initial POC choice, not a measured workload requirement. Logs lost during a cap-related collection gap are not guaranteed to be recoverable.
+
+Apply the workspace cap with `make plan-shared` / `make apply` before the cluster stage. Apply `module.kubernetes` immediately after the cluster stage and before deploying workloads: it installs the [monitor agent ConfigMap](https://github.com/microsoft/Docker-Provider/blob/ci_prod/kubernetes/container-azm-ms-agentconfig.yaml). Until then, agent defaults apply. The DCR namespace filter covers events/inventory; the ConfigMap separately excludes container logs before upload. Container log filtering is an exclusion list, so review it when adding namespaces. App and agent log verbosity still determines volume; avoid debug output and request-body logging by default.
 
 ### Kubernetes Namespaces
 
@@ -144,6 +160,7 @@ Written blind. Check on first apply:
 - `os_sku = "AzureLinux"`, `postgres_version = "17"`, VM sizes available in the chosen region.
 - Successful creation of PostgreSQL 17 with `B_Standard_B1ms` in `northeurope`. The human developer confirmed regional capabilities are available; server creation is still unverified.
 - The identities module creates role assignments before AKS creation, and a cluster rebuild preserves principal IDs and role assignments on shared resources while updating federation.
+- The DCR collects only the three selected tables; the agent applies namespace/event filters after `module.kubernetes` is applied; the workspace cap and actual ingestion volume behave as documented.
 - All three node pools provision with their configured sizes; workload templates select the intended pools and tolerate the agent taint.
 - AKS accepts the custom node resource group name `ai-sdlc-aks-managed-rg` on creation.
 - Network Contributor on the egress IP is sufficient for the control plane to attach it.

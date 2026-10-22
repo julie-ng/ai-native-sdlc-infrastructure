@@ -28,7 +28,7 @@ dns_service_ip = "172.16.0.10"
 # =====
 # POC: keep one node per pool; use cluster start/stop when idle.
 
-# Requested POC sizing conflicts with current AKS system-pool guidance; see README.
+# Human-selected POC system sizing; Azure acceptance remains unverified until apply.
 system_vm_size         = "Standard_D2s_v5"
 system_nodes_min_count = 1
 system_nodes_max_count = 2
