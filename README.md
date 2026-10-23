@@ -3,7 +3,7 @@
 Terraform for the AI SDLC platform on Azure: one AKS cluster plus the backing services it needs. Single environment (dev).
 
 > [!IMPORTANT]
-> First pass written without Azure access. Passes `terraform validate` and `tflint`; **never planned or applied**. See [Unverified](#unverified).
+> All five infrastructure modules were deployed successfully by the human developer on 2026-10-22. Platform services and workflows have not been tested. Agents verify offline only; see [Unverified](#unverified).
 
 ## Modules
 
@@ -13,10 +13,11 @@ Apply one at a time, in this order. Each depends on the outputs of the ones befo
 |---|---|---|---|
 | 1 | [`networking`](./modules/networking/) | `ai-sdlc-networking-rg` | VNet, `aks-nodes-subnet` (service endpoints: Key Vault, Storage), empty `AzureFirewallSubnet`, ingress + egress static IPs |
 | 2 | [`shared`](./modules/shared/) | `ai-sdlc-shared-rg` | PostgreSQL Flexible Server (`workflow`, `argo` DBs), Blob Storage: `ai-sdlc{suffix}artifacts` (artifact service), `ai-sdlc{suffix}argo` (Argo artifact repository), Key Vault, ACR (pull only), Log Analytics (North Europe) |
-| 3 | [`cluster`](./modules/cluster/) | `ai-sdlc-{suffix}-rg` | AKS (`system` + `platform` pools, Key Vault CSI driver), control-plane + kubelet identities, workload identities, Container Insights, role assignments |
-| 4 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents`; ServiceAccounts; `argo-executor` ServiceAccount + Role |
+| 3 | [`identities`](./modules/identities/) | `ai-sdlc-identities-rg` | Persistent control-plane, kubelet and platform workload identities; role assignments for networking, ACR, Storage and Key Vault |
+| 4 | [`cluster`](./modules/cluster/) | `ai-sdlc-cluster-rg` | AKS (`system`, `platform` and `agents` pools, Key Vault CSI driver), cluster-specific workload federation, Container Insights, cluster-admin role assignment |
+| 5 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents`; ServiceAccounts; `argo-executor` ServiceAccount + Role; monitor agent ConfigMap |
 
-Networking and shared groups carry no suffix — longer lifecycle than the cluster. Globally unique names (Key Vault, Storage, ACR, Postgres) and the cluster carry a random 4-character suffix, kept in state.
+Resource group names carry no random suffix. AKS creates its Azure-managed node resources in `ai-sdlc-aks-managed-rg`. Globally unique names (Key Vault, Storage, ACR, Postgres) and the cluster carry a random 4-character suffix, kept in state.
 
 ## Prerequisites
 
@@ -26,6 +27,9 @@ Networking and shared groups carry no suffix — longer lifecycle than the clust
 ```hcl
 admin_ip_ranges = ["x.x.x.x/32"]
 ```
+
+> [!IMPORTANT]
+> CIDR notation is required. For a single IPv4 address, append `/32`.
 
 ### Log in to Azure 
 
@@ -47,20 +51,72 @@ az account set --subscription <subscription-id>
 make init
 make plan-networking && make apply
 make plan-shared     && make apply
+make plan-identities && make apply
 make plan-cluster    && make apply
 make kubecontext
-make plan-kubernetes && make apply
+make plan-k8s        && make apply
 make plan            # expect: no changes
 ```
 
 `-target` is used for staging only. The final untargeted `plan` confirms nothing was missed.
 
+Cluster commands use the separate `cluster` root output, which depends only on `module.cluster`. The combined `summary` output may not be saved until the Kubernetes stage is applied. After adding the `cluster` output to an already deployed cluster, rerun `make plan-cluster`, review the plan, and run `make apply` to save it before `make kubecontext`.
+
+Managed identity names have no random suffix. Identities and their role assignments on shared resources survive cluster rebuilds. Cluster recreation updates workload federation to its OIDC issuer. Identity resources and their group have `prevent_destroy` guards.
+
+> [!IMPORTANT]
+> Before applying this module split, discard any earlier saved plan and generate a fresh one. `moved.tf` preserves Terraform addresses, but existing identities in the cluster resource group would still require replacement to use the new group; `prevent_destroy` blocks that replacement. If identities have already been deployed, review a separate migration before applying.
+
 > [!NOTE]
-> **Regions**: Defaults to `westeurope` see [`defaults.auto.tfvars`](./defaults.auto.tfvars). Log Analytics and the Container Insights must be in same region. Due to Microsoft data center capacity constraints data collection rule are pinned to `northeurope`.
+> **Regions**: Defaults to `westeurope`; see [`defaults.auto.tfvars`](./defaults.auto.tfvars). PostgreSQL is pinned to `northeurope` because this subscription cannot provision it in West Europe. Log Analytics and the Container Insights data collection rule are also pinned to `northeurope` and must share a region.
+
+### Start and stop the cluster
+
+After a successful deployment, with the local Terraform state available and Azure CLI signed into the deployment subscription:
+
+```sh
+make stop-cluster
+make start-cluster
+```
+
+These run `az aks stop` / `az aks start` using the resource group and cluster name from `terraform output -json cluster`. They wait for Azure to complete the operation. Missing outputs stop the command before Azure is called. Backing services such as PostgreSQL remain running and bill separately. Start the cluster before running Terraform against Kubernetes resources.
+
+[AKS stop/start considerations](https://learn.microsoft.com/en-us/azure/aks/start-stop-cluster): stopping releases capacity, so restart is subject to availability. After stopping, Microsoft advises waiting 15–30 minutes before starting again. Standalone pods are deleted during stop; controller-managed workloads are restored on start.
+
+### Node pools
+
+| Pool | VM size | Minimum nodes | Maximum nodes |
+|---|---|---:|---:|
+| `system` | `Standard_D2s_v5` | 1 | 2 |
+| `platform` | `Standard_D2s_v5` | 1 | 2 |
+| `agents` | `Standard_D4s_v5` | 1 | 2 |
+
+The human developer reported successful deployment with this POC sizing on 2026-10-22. This is provisioning evidence for this subscription/region, not a production sizing recommendation.
+
+All pools autoscale within these bounds. For the POC, use [AKS cluster start/stop](https://learn.microsoft.com/en-us/azure/aks/start-stop-cluster) when idle. Stopping releases capacity, so restarting remains subject to regional availability. User-pool scale-to-zero is a [deferred target design (#3)](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/3); no application wake-up infrastructure is included.
+
+Workload manifests must select `kubernetes.azure.com/agentpool: platform` for platform services or `kubernetes.azure.com/agentpool: agents` for agent pods. Agent pods must also tolerate `workload=agents:NoSchedule`. These scheduling settings do not provide a security isolation boundary. Workload templates are maintained outside this repo.
+
+### Monitoring costs
+
+| Control | POC setting |
+|---|---|
+| Workspace retention | 30 days; no extended retention configured |
+| Daily ingestion cap | 0.1 GB/day (about 100 MB), workspace-wide |
+| Collected tables | `ContainerLogV2`, `KubeEvents`, `KubePodInventory` |
+| Pod inventory | Every 5 minutes, for `platform`, `argo`, `github-broker`, `agents` |
+| Kubernetes events | Non-Normal events in those four namespaces; event-driven |
+| Container logs | stdout and stderr; exclude `kube-system`, `gatekeeper-system`, `azure-arc`, `kube-public`, `kube-node-lease`, `calico-system`, `default` at the agent |
+
+The [logs/events preset](https://learn.microsoft.com/en-us/azure/azure-monitor/containers/kubernetes-monitoring-enable#configuration-options) keeps troubleshooting data without ingesting `Perf`, `InsightsMetrics`, or the extra inventory tables. Inventory is sampled more slowly; this does not throttle container logs or events. Historical CPU/memory charts and full Container Insights visualizations are not provided by this configuration. No Managed Prometheus, Grafana, syslog, or AKS audit/control-plane log export is enabled by this repo.
+
+[Retention below 31 days does not reduce Analytics ingestion charges](https://learn.microsoft.com/en-us/azure/azure-monitor/logs/data-retention-configure). The [daily cap](https://learn.microsoft.com/en-us/azure/azure-monitor/logs/daily-cap) is a backstop, not a hard spending limit: overshoot is billable, and collection stops until the workspace reset. 0.1 GB/day is an initial POC choice, not a measured workload requirement. Logs lost during a cap-related collection gap are not guaranteed to be recoverable.
+
+Apply the workspace cap with `make plan-shared` / `make apply` before the cluster stage. Apply `module.kubernetes` immediately after the cluster stage and before deploying workloads: it installs the [monitor agent ConfigMap](https://github.com/microsoft/Docker-Provider/blob/ci_prod/kubernetes/container-azm-ms-agentconfig.yaml). Until then, agent defaults apply. The DCR namespace filter covers events/inventory; the ConfigMap separately excludes container logs before upload. Container log filtering is an exclusion list, so review it when adding namespaces. App and agent log verbosity still determines volume; avoid debug output and request-body logging by default.
 
 ### Kubernetes Namespaces
 
-Namespaces form part of the security boundary, enforced through ServiceAccounts, RBAC and Azure Workload Identity. The GitHub broker has its own namespace to isolate its ServiceAccount and Key Vault secret mounts, including the GitHub App private key.
+The four namespaces separate platform services, Argo, the GitHub broker and agent workflows. The broker has its own ServiceAccount and Key Vault secret mounts, including the GitHub App private key.
 
 | Namespace | What goes here |
 |---|---|
@@ -89,7 +145,7 @@ Kept out of Terraform so secrets never land in state, or because no azurerm reso
   ```
 
 - **Postgres roles for workload identities.** `workflow-service`, `argo-workflow-controller` and `argo-server` connect via Entra ID, but need database roles. As the Entra admin, create a role per managed identity (`pgaadauth_create_principal`) and grant it its database. **Unverified:** exact function arguments for managed identities.
-- **Key Vault secrets.** GitHub App private key for the token broker ([ADR-012](https://github.com/julie-ng/autonomous-agents-setup/blob/main/architecture/decisions/012-cloud-agent-identity.md)).
+- **Key Vault secrets.** GitHub App private key for the token broker ([ADR-012](https://github.com/julie-ng/ai-native-sdlc/blob/main/architecture/decisions/012-cloud-agent-identity.md)).
 
 ## Network
 
@@ -103,21 +159,25 @@ Kept out of Terraform so secrets never land in state, or because no azurerm reso
 
 | Service | Access |
 |---|---|
-| Key Vault, both storage accounts | Public endpoint, default deny. Allowed: AKS subnet via service endpoint, `admin_ip_ranges`. |
-| PostgreSQL | Public endpoint, firewall: cluster egress IP, `admin_ip_ranges`. Flexible Server has no service endpoint support — traffic is not on the Azure backbone. |
+| Key Vault, both storage accounts | Public endpoint, default deny. Allow AKS subnet via service endpoint and `admin_ip_ranges`; trusted Azure service bypass is also enabled. Authentication and role assignments still apply. |
+| PostgreSQL | Public endpoint, firewall: cluster egress IP, `admin_ip_ranges`. Flexible Server has no service endpoint support. Public endpoint does not imply public-internet routing between Azure services; see [Microsoft global network](https://learn.microsoft.com/en-us/azure/networking/microsoft-global-network). |
 | ACR | Public endpoint. Basic SKU has no network rules. Kubelet pulls; nothing in this repo or GitHub can push — images are pushed manually. |
 
 Egress: all cluster outbound traffic leaves via `ai-sdlc-egress-ip` (load balancer outbound IP). No egress filtering.
 
 ## Unverified
 
-Written blind. Check on first apply:
+Provisioning confirmed by the human developer on 2026-10-22: networking, shared services (including PostgreSQL 17/B1ms in North Europe), identities and role assignments, all three AKS pools, and the Kubernetes module. The custom resource groups and staged applies were accepted. No Azure or cluster commands were run by the agent to independently verify runtime behavior.
 
-- `-target=module.networking` / `module.shared` plans succeed even though the `kubernetes` provider is configured from cluster outputs that don't exist yet.
-- `kube_config[0].host` and `cluster_ca_certificate` are populated with local accounts disabled.
-- `azurerm_storage_container.id` is the ARM resource ID, usable as a role assignment scope.
-- `os_sku = "AzureLinux"`, `postgres_version = "17"`, VM sizes available in the chosen region.
-- Network Contributor on the egress IP is sufficient for the control plane to attach it.
+POC verification checklist (results reported by the human developer):
+
+- [x] `make stop-cluster` completes successfully.
+- [x] Final untargeted `make plan` shows no pending changes after all stages.
+- [x] `make start-cluster`, node readiness, and `make kubecontext` after restart. Start the cluster before planning or applying Kubernetes resources.
+- [ ] Workload identity authentication to Blob, Key Vault and PostgreSQL, including the manual database roles and Kubernetes workload labels.
+- [ ] First workflow execution, Argo executor token mounts/RBAC, agent pool selection/tolerations, and no Argo artifact uploads from agent steps in the POC.
+- [ ] Monitoring table selection, ConfigMap filters, observed ingestion volume and cap behavior. Successful resource deployment does not prove logs are flowing or filtering correctly.
+- [ ] Identity continuity across a cluster rebuild; this lifecycle has not been exercised yet.
 
 ## Docs
 

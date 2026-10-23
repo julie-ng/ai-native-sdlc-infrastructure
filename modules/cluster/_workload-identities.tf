@@ -16,18 +16,10 @@ locals {
   ]...)
 }
 
-resource "azurerm_user_assigned_identity" "workloads" {
-  for_each            = var.workload_identities
-  name                = "${each.key}-${var.suffix}-workload-mi"
-  resource_group_name = azurerm_resource_group.cluster_rg.name
-  location            = azurerm_resource_group.cluster_rg.location
-  tags                = var.tags
-}
-
 resource "azurerm_federated_identity_credential" "workloads" {
   for_each                  = local.federated_credentials
   name                      = "${each.value.namespace}-${each.value.service_account}"
-  user_assigned_identity_id = azurerm_user_assigned_identity.workloads[each.value.identity].id
+  user_assigned_identity_id = var.workload_identity_ids[each.value.identity]
   audience                  = ["api://AzureADTokenExchange"]
   issuer                    = azurerm_kubernetes_cluster.aks.oidc_issuer_url
   subject                   = "system:serviceaccount:${each.value.namespace}:${each.value.service_account}"

@@ -6,19 +6,11 @@
 # https://github.com/microsoft/Docker-Provider/tree/ci_prod/scripts/onboarding/aks/onboarding-msi-terraform
 
 locals {
+  # Logs/events preset: omit historical performance and extra inventory tables for the POC.
   container_insights_streams = [
-    "Microsoft-ContainerLog",
     "Microsoft-ContainerLogV2",
     "Microsoft-KubeEvents",
     "Microsoft-KubePodInventory",
-    "Microsoft-KubeNodeInventory",
-    "Microsoft-KubePVInventory",
-    "Microsoft-KubeServices",
-    "Microsoft-KubeMonAgentEvents",
-    "Microsoft-InsightsMetrics",
-    "Microsoft-ContainerInventory",
-    "Microsoft-ContainerNodeInventory",
-    "Microsoft-Perf",
   ]
 }
 
@@ -28,7 +20,7 @@ resource "azurerm_monitor_data_collection_rule" "container_insights" {
   name                = "MSCI-northeurope-${azurerm_kubernetes_cluster.aks.name}" # naming convention used by AKS itself
   resource_group_name = azurerm_resource_group.cluster_rg.name
   location            = "northeurope"
-  description         = "DCR for Azure Monitor Container Insights"
+  description         = "POC logs and events; pod inventory every five minutes"
   tags                = var.tags
 
   destinations {
@@ -43,6 +35,7 @@ resource "azurerm_monitor_data_collection_rule" "container_insights" {
     destinations = ["ciworkspace"]
   }
 
+  # Namespace filtering here covers events/inventory, not stdout/stderr; see kubernetes/_monitoring.tf.
   data_sources {
     extension {
       name           = "ContainerInsightsExtension"
@@ -50,8 +43,9 @@ resource "azurerm_monitor_data_collection_rule" "container_insights" {
       streams        = local.container_insights_streams
       extension_json = jsonencode({
         dataCollectionSettings = {
-          interval               = "1m"
-          namespaceFilteringMode = "Off"
+          interval               = "5m"
+          namespaceFilteringMode = "Include"
+          namespaces             = ["platform", "argo", "github-broker", "agents"]
           enableContainerLogV2   = true
         }
       })

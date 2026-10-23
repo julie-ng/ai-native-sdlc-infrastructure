@@ -45,6 +45,12 @@ provider "kubernetes" {
   host                   = module.cluster.kube_api.host
   cluster_ca_certificate = base64decode(module.cluster.kube_api.cluster_ca_certificate)
 
+  # 🙋‍♀️ Julie Note: even if this is approach used in official AKS blog, I'm not thrilled with hard-coding any UUID - and would prefer my cloudkube-aks-clusters approach… use make to export TF vars and apply with kubectl.
+  #
+  # https://blog.aks.azure.com/2026/01/09/deploy-aks-automatic-terraform-helm
+  # https://github.com/julie-ng/cloudkube-aks-clusters/blob/main/Makefile
+  #
+  # Letting this stay for a POC for now.
   exec {
     api_version = "client.authentication.k8s.io/v1beta1"
     command     = "kubelogin"

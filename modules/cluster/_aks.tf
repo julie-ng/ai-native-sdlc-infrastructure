@@ -6,7 +6,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
   name                = "${local.name_suffixed}-cluster"
   location            = azurerm_resource_group.cluster_rg.location
   resource_group_name = azurerm_resource_group.cluster_rg.name
-  node_resource_group = "${local.name_suffixed}-managed-rg" # instead of default MC_ prefix
+  node_resource_group = "${local.name}-aks-managed-rg" # instead of default MC_ prefix
   dns_prefix          = local.name_suffixed
   kubernetes_version  = var.kubernetes_version
   sku_tier            = "Free"
@@ -28,13 +28,13 @@ resource "azurerm_kubernetes_cluster" "aks" {
 
   identity {
     type         = "UserAssigned"
-    identity_ids = [azurerm_user_assigned_identity.control_plane_mi.id]
+    identity_ids = [var.control_plane_identity.id]
   }
 
   kubelet_identity {
-    client_id                 = azurerm_user_assigned_identity.kubelet_mi.client_id
-    object_id                 = azurerm_user_assigned_identity.kubelet_mi.principal_id
-    user_assigned_identity_id = azurerm_user_assigned_identity.kubelet_mi.id
+    client_id                 = var.kubelet_identity.client_id
+    object_id                 = var.kubelet_identity.principal_id
+    user_assigned_identity_id = var.kubelet_identity.id
   }
 
   # Node pools are defined explicitly - no node auto-provisioning
@@ -42,7 +42,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
     mode = "Manual"
   }
 
-  # System pool. Platform pool is a separate resource, see _node-pools.tf
+  # System pool. User pools are separate resources, see _node-pools.tf
   default_node_pool {
     name                         = "system"
     vm_size                      = var.system_vm_size
@@ -94,10 +94,4 @@ resource "azurerm_kubernetes_cluster" "aks" {
       kubernetes_version,                        # automatic upgrades
     ]
   }
-
-  depends_on = [
-    azurerm_role_assignment.control_plane_on_kubelet_mi,
-    azurerm_role_assignment.control_plane_on_nodes_subnet,
-    azurerm_role_assignment.control_plane_on_egress_ip,
-  ]
 }

@@ -15,8 +15,9 @@ locals {
 # Apply one module at a time, in this order - see README.
 #   1. networking
 #   2. shared      (backing services)
-#   3. cluster
-#   4. kubernetes  (in-cluster resources)
+#   3. identities   (persistent principals and grants)
+#   4. cluster
+#   5. kubernetes  (in-cluster resources)
 
 # ============
 #  Networking
@@ -56,6 +57,27 @@ module "shared" {
   postgres_databases = var.postgres_databases
 }
 
+# ======================
+#  Persistent Identities
+# ======================
+
+module "identities" {
+  source   = "./modules/identities"
+  name     = var.name
+  location = var.location
+  tags     = var.default_tags
+
+  aks_nodes_subnet_id          = module.networking.subnets.aks_nodes.id
+  egress_ip_id                 = module.networking.public_ips.egress.id
+  container_registry_id        = module.shared.container_registry.id
+  key_vault_id                 = module.shared.key_vault.id
+  artifacts_container_id       = module.shared.storage.artifacts.container_id
+  artifacts_storage_account_id = module.shared.storage.artifacts.id
+  argo_container_id            = module.shared.storage.argo.container_id
+
+  workload_identities = toset(keys(local.workload_identities))
+}
+
 # =============
 #  AKS Cluster
 # =============
@@ -82,17 +104,21 @@ module "cluster" {
   platform_nodes_min_count = var.platform_nodes_min_count
   platform_nodes_max_count = var.platform_nodes_max_count
 
+  agents_vm_size         = var.agents_vm_size
+  agents_nodes_min_count = var.agents_nodes_min_count
+  agents_nodes_max_count = var.agents_nodes_max_count
+
   # From networking
   aks_nodes_subnet_id = module.networking.subnets.aks_nodes.id
   egress_ip_id        = module.networking.public_ips.egress.id
 
   # From shared
-  log_analytics_workspace_id   = module.shared.log_analytics.id
-  container_registry_id        = module.shared.container_registry.id
-  key_vault_id                 = module.shared.key_vault.id
-  artifacts_container_id       = module.shared.storage.artifacts.container_id
-  artifacts_storage_account_id = module.shared.storage.artifacts.id
-  argo_container_id            = module.shared.storage.argo.container_id
+  log_analytics_workspace_id = module.shared.log_analytics.id
+
+  # Persistent principals survive cluster rebuilds.
+  control_plane_identity = module.identities.control_plane
+  kubelet_identity       = module.identities.kubelet
+  workload_identity_ids  = { for k, mi in module.identities.workloads : k => mi.id }
 
   workload_identities = local.workload_identities
 }
@@ -105,7 +131,7 @@ module "kubernetes" {
   source = "./modules/kubernetes"
 
   workload_identities = local.workload_identities
-  workload_client_ids = { for k, mi in module.cluster.workload_identities : k => mi.client_id }
+  workload_client_ids = { for k, mi in module.identities.workloads : k => mi.client_id }
   agent_roles         = var.agent_roles
 
   # Provider config depends on the cluster, which is not a dependency Terraform sees.

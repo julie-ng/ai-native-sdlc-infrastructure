@@ -19,22 +19,37 @@ plan-networking:
 plan-shared:
 	terraform plan -target=module.shared -out plan.tfplan
 
+plan-identities:
+	terraform plan -target=module.identities -out plan.tfplan
+
 plan-cluster:
 	terraform plan -target=module.cluster -out plan.tfplan
 
-plan-kubernetes:
+plan-k8s:
 	terraform plan -target=module.kubernetes -out plan.tfplan
 
-# Full plan - should show no changes once all four steps are applied
+# Full plan - should show no changes once all five steps are applied
 plan:
 	terraform plan -out plan.tfplan
 
 apply:
 	terraform apply plan.tfplan
 
+# A combined summary can remain unavailable until the later Kubernetes stage is applied.
+define cluster_target
+set -eu; \
+cluster_output="$$(terraform output -json cluster)"; \
+cluster_rg="$$(printf '%s\n' "$$cluster_output" | jq -er '.resource_group.name | select(type == "string" and length > 0)')"; \
+cluster_name="$$(printf '%s\n' "$$cluster_output" | jq -er '.aks_cluster.name | select(type == "string" and length > 0)')"
+endef
+
+.PHONY: start-cluster stop-cluster kubecontext
+start-cluster stop-cluster:
+	@$(cluster_target); \
+	az aks $(patsubst %-cluster,%,$@) --resource-group "$$cluster_rg" --name "$$cluster_name"
+
 kubecontext:
-	az aks get-credentials \
-		--resource-group $$(terraform output -json summary | jq -r .cluster.resource_group.name) \
-		--name $$(terraform output -json summary | jq -r .cluster.aks_cluster.name)
+	@$(cluster_target); \
+	az aks get-credentials --resource-group "$$cluster_rg" --name "$$cluster_name"
 	kubelogin convert-kubeconfig -l azurecli
 	kubectl get nodes

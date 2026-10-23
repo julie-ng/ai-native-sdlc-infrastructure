@@ -11,33 +11,11 @@ output "summary" {
       node_rg         = azurerm_kubernetes_cluster.aks.node_resource_group
       oidc_issuer_url = azurerm_kubernetes_cluster.aks.oidc_issuer_url
     }
-    managed_identities = {
-      control_plane = {
-        name         = azurerm_user_assigned_identity.control_plane_mi.name
-        client_id    = azurerm_user_assigned_identity.control_plane_mi.client_id
-        principal_id = azurerm_user_assigned_identity.control_plane_mi.principal_id
-      }
-      kubelet = {
-        name         = azurerm_user_assigned_identity.kubelet_mi.name
-        client_id    = azurerm_user_assigned_identity.kubelet_mi.client_id
-        principal_id = azurerm_user_assigned_identity.kubelet_mi.principal_id
-      }
-    }
     workload_identities = {
-      for k, mi in azurerm_user_assigned_identity.workloads : k => {
-        name      = mi.name
-        client_id = mi.client_id
-        subjects  = [for key, fc in azurerm_federated_identity_credential.workloads : fc.subject if local.federated_credentials[key].identity == k]
+      for k in keys(var.workload_identities) : k => {
+        id       = var.workload_identity_ids[k]
+        subjects = [for key, fc in azurerm_federated_identity_credential.workloads : fc.subject if local.federated_credentials[key].identity == k]
       }
-    }
-  }
-}
-
-output "workload_identities" {
-  value = {
-    for k, mi in azurerm_user_assigned_identity.workloads : k => {
-      name      = mi.name
-      client_id = mi.client_id
     }
   }
 }
