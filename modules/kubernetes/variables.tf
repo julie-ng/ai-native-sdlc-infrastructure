@@ -15,3 +15,18 @@ variable "agent_roles" {
   type        = list(string)
   description = "One ServiceAccount per agent role in the `agents` namespace."
 }
+
+variable "platform_namespace" {
+  type        = string
+  description = "Namespace for platform services."
+}
+
+variable "argo_namespace" {
+  type        = string
+  description = "Namespace for the Argo Workflows controller and server."
+}
+
+variable "github_broker_namespace" {
+  type        = string
+  description = "Namespace for the GitHub token broker."
+}
