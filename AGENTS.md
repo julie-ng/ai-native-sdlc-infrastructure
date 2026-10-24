@@ -52,7 +52,9 @@ If an ADR and this repo disagree, flag it to the human developer. Don't silently
 - Files split by concern (`_aks.tf`, `_rbac.tf`, `_identities.tf`), with `# ====` banner comments.
 - Defaults go in `defaults.auto.tfvars`. Personal values (admin IPs) go in git-ignored `private.auto.tfvars`.
 - `prevent_destroy` on anything that outlives a cluster rebuild: static IPs, databases.
-- Don't add variables for things that don't vary. Hard-code them with a comment.
+- **When to use a variable:**
+  - Don't add variables for things that don't vary. Hard-code them with a comment.
+  - **Exception: values this repo chooses, and values that matter to the security model, are always variables**, even if they never change. Examples: namespace names, the IMDS address. Reviews and audits scan `main.tf`, `variables.tf` and `defaults.auto.tfvars`, so these must be visible there, not buried inline in a module. If a value isn't ours to change, say so in its description.
 
 ## Decisions
 
