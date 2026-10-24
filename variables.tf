@@ -127,16 +127,31 @@ variable "agent_roles" {
 variable "platform_namespace" {
   type        = string
   description = "Namespace for platform services: workflow-service, artifact-service (ADR-003). Changing it recreates the namespace and everything in it, and replaces their workload identities' federated credentials, whose subject and name include the namespace."
+
+  validation {
+    condition     = can(regex("^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$", var.platform_namespace))
+    error_message = "Must be a Kubernetes DNS label: 1-63 lowercase letters, digits or dashes, starting and ending with a letter or digit."
+  }
 }
 
 variable "argo_namespace" {
   type        = string
   description = "Namespace for the Argo Workflows controller and server. Changing it recreates the namespace and everything in it, and replaces their workload identities' federated credentials, whose subject and name include the namespace."
+
+  validation {
+    condition     = can(regex("^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$", var.argo_namespace))
+    error_message = "Must be a Kubernetes DNS label: 1-63 lowercase letters, digits or dashes, starting and ending with a letter or digit."
+  }
 }
 
 variable "github_broker_namespace" {
   type        = string
   description = "Namespace for the GitHub token broker. Changing it recreates the namespace and everything in it, and replaces its workload identity's federated credential, whose subject and name include the namespace."
+
+  validation {
+    condition     = can(regex("^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$", var.github_broker_namespace))
+    error_message = "Must be a Kubernetes DNS label: 1-63 lowercase letters, digits or dashes, starting and ending with a letter or digit."
+  }
 }
 
 # ==========
