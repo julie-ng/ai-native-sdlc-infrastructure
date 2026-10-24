@@ -13,5 +13,15 @@ variable "workload_client_ids" {
 
 variable "agent_roles" {
   type        = list(string)
-  description = "One ServiceAccount per agent role in the `agents` namespace."
+  description = "One ServiceAccount per agent role in the agents namespace."
+}
+
+variable "agents_namespace" {
+  type        = string
+  description = "Namespace for agent pods. Pod Security baseline and the IMDS NetworkPolicy apply here."
+}
+
+variable "azure_imds_endpoint" {
+  type        = string
+  description = "Azure Instance Metadata Service IP, blocked for agent pods. Owned by Azure."
 }

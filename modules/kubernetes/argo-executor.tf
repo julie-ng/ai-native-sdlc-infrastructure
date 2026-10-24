@@ -12,7 +12,7 @@
 resource "kubernetes_service_account_v1" "argo_executor" {
   metadata {
     name      = "argo-executor"
-    namespace = kubernetes_namespace_v1.ns["agents"].metadata[0].name
+    namespace = kubernetes_namespace_v1.ns[var.agents_namespace].metadata[0].name
   }
 
   automount_service_account_token = false
@@ -23,7 +23,7 @@ resource "kubernetes_service_account_v1" "argo_executor" {
 resource "kubernetes_role_v1" "argo_executor" {
   metadata {
     name      = "argo-executor"
-    namespace = kubernetes_namespace_v1.ns["agents"].metadata[0].name
+    namespace = kubernetes_namespace_v1.ns[var.agents_namespace].metadata[0].name
   }
 
   rule {
@@ -36,7 +36,7 @@ resource "kubernetes_role_v1" "argo_executor" {
 resource "kubernetes_role_binding_v1" "argo_executor" {
   metadata {
     name      = "argo-executor"
-    namespace = kubernetes_namespace_v1.ns["agents"].metadata[0].name
+    namespace = kubernetes_namespace_v1.ns[var.agents_namespace].metadata[0].name
   }
 
   role_ref {
@@ -48,6 +48,6 @@ resource "kubernetes_role_binding_v1" "argo_executor" {
   subject {
     kind      = "ServiceAccount"
     name      = kubernetes_service_account_v1.argo_executor.metadata[0].name
-    namespace = kubernetes_namespace_v1.ns["agents"].metadata[0].name
+    namespace = kubernetes_namespace_v1.ns[var.agents_namespace].metadata[0].name
   }
 }

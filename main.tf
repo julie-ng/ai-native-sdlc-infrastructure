@@ -108,6 +108,9 @@ module "cluster" {
   agents_nodes_min_count = var.agents_nodes_min_count
   agents_nodes_max_count = var.agents_nodes_max_count
 
+  # Monitoring
+  agents_namespace = var.agents_namespace
+
   # From networking
   aks_nodes_subnet_id = module.networking.subnets.aks_nodes.id
   egress_ip_id        = module.networking.public_ips.egress.id
@@ -133,6 +136,8 @@ module "kubernetes" {
   workload_identities = local.workload_identities
   workload_client_ids = { for k, mi in module.identities.workloads : k => mi.client_id }
   agent_roles         = var.agent_roles
+  agents_namespace    = var.agents_namespace
+  azure_imds_endpoint = var.azure_imds_endpoint
 
   # Provider config depends on the cluster, which is not a dependency Terraform sees.
   depends_on = [module.cluster]
