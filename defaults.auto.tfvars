@@ -43,6 +43,20 @@ agents_nodes_max_count = 2
 
 agent_roles = ["planner", "coder", "reviewer", "open-pr"]
 
+# ============
+#  Kubernetes
+# ============
+
+agents_namespace = "agents" # untrusted: Pod Security baseline + IMDS blocked
+
+# ================
+#  Azure Platform
+# ================
+# Owned by Azure, not this repo - do not change.
+# https://learn.microsoft.com/en-us/azure/virtual-machines/instance-metadata-service
+
+azure_imds_endpoint = "169.254.169.254"
+
 # ==========
 #  Postgres
 # ==========

@@ -77,6 +77,14 @@ variable "agents_nodes_max_count" {
   type = number
 }
 
+# Monitoring
+# ----------
+
+variable "agents_namespace" {
+  type        = string
+  description = "Agents namespace, for Container Insights namespace filtering."
+}
+
 # From networking module
 # ----------------------
 

@@ -18,7 +18,7 @@
 resource "kubernetes_network_policy_v1" "agents_deny_imds" {
   metadata {
     name      = "deny-imds"
-    namespace = kubernetes_namespace_v1.ns["agents"].metadata[0].name
+    namespace = kubernetes_namespace_v1.ns[var.agents_namespace].metadata[0].name
   }
 
   spec {
@@ -29,7 +29,7 @@ resource "kubernetes_network_policy_v1" "agents_deny_imds" {
       to {
         ip_block {
           cidr   = "0.0.0.0/0"
-          except = ["169.254.169.254/32"]
+          except = ["${var.azure_imds_endpoint}/32"]
         }
       }
 
