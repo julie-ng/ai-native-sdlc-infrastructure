@@ -45,7 +45,7 @@ resource "azurerm_monitor_data_collection_rule" "container_insights" {
         dataCollectionSettings = {
           interval               = "5m"
           namespaceFilteringMode = "Include"
-          namespaces             = ["platform", "argo", "github-broker", "agents"]
+          namespaces             = [var.platform_namespace, var.argo_namespace, var.github_broker_namespace, "agents"]
           enableContainerLogV2   = true
         }
       })

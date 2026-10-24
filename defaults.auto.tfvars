@@ -43,6 +43,14 @@ agents_nodes_max_count = 2
 
 agent_roles = ["planner", "coder", "reviewer", "open-pr"]
 
+# ============
+#  Kubernetes
+# ============
+
+platform_namespace      = "platform"
+argo_namespace          = "argo"
+github_broker_namespace = "github-broker"
+
 # ==========
 #  Postgres
 # ==========
