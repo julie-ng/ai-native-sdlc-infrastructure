@@ -4,7 +4,7 @@
 # ADR-003: platform services, Argo and the broker are trusted; agents are not.
 
 locals {
-  namespaces = ["platform", "argo", "github-broker", var.agents_namespace]
+  namespaces = [var.platform_namespace, var.argo_namespace, var.github_broker_namespace, var.agents_namespace]
 
   # Pod Security Admission. Agents run LLM-driven code: baseline rejects hostNetwork and privileged
   # pods, which bypass the IMDS NetworkPolicy (network-policies.tf). restricted is warn/audit only,

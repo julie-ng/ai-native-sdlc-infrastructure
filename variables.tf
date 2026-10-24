@@ -124,6 +124,20 @@ variable "agent_roles" {
 #  Kubernetes
 # ============
 
+variable "platform_namespace" {
+  type        = string
+  description = "Namespace for platform services: workflow-service, artifact-service (ADR-003). Changing it recreates the namespace and everything in it, and replaces their workload identities' federated credentials, whose subject and name include the namespace."
+}
+
+variable "argo_namespace" {
+  type        = string
+  description = "Namespace for the Argo Workflows controller and server. Changing it recreates the namespace and everything in it, and replaces their workload identities' federated credentials, whose subject and name include the namespace."
+}
+
+variable "github_broker_namespace" {
+  type        = string
+  description = "Namespace for the GitHub token broker. Changing it recreates the namespace and everything in it, and replaces its workload identity's federated credential, whose subject and name include the namespace."
+}
 variable "agents_namespace" {
   type        = string
   description = "Namespace for agent pods, which run LLM-driven code (ADR-003). Pod Security baseline and the IMDS NetworkPolicy apply here. Changing it recreates the namespace and everything in it."

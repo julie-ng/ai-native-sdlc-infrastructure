@@ -47,7 +47,10 @@ agent_roles = ["planner", "coder", "reviewer", "open-pr"]
 #  Kubernetes
 # ============
 
-agents_namespace = "agents" # untrusted: Pod Security baseline + IMDS blocked
+platform_namespace      = "platform"
+argo_namespace          = "argo"
+github_broker_namespace = "github-broker"
+agents_namespace        = "agents" # untrusted: Pod Security baseline + IMDS blocked
 
 # ================
 #  Azure Platform
