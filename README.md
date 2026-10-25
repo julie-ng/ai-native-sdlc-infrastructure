@@ -133,6 +133,8 @@ Agent pods run LLM-driven code, so `agents` has two extra controls:
 - **Pod Security `baseline`, enforced.** Rejects `hostNetwork`, `privileged`, `hostPath`, host ports and capabilities beyond the container runtime defaults, so no Docker-in-Docker. `restricted` is warn/audit only: `kubectl apply` prints what templates would need for it.
 - **NetworkPolicy `deny-imds`.** Allows all egress except `169.254.169.254`, so pods can't get tokens for node identities such as the kubelet's. Only IMDS is blocked: agents still reach every pod and the internet.
 
+The platform also blocks some addresses itself. For example, [WireServer](https://learn.microsoft.com/en-us/azure/virtual-network/what-is-ip-address-168-63-129-16) (`168.63.129.16`, the VM agent's channel to Azure) times out from `agents` pods on ports 80 and 32526, verified 2026-10-25. `deny-imds` doesn't cause this, and this repo doesn't enforce it.
+
 ### After apply — manual steps
 
 Kept out of Terraform so secrets never land in state, or because no azurerm resource covers it.
