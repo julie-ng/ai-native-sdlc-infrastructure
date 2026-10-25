@@ -98,7 +98,6 @@ If an ADR and this repo disagree, flag it to the human developer. Don't silently
 - Request harness escalation for authorized operations blocked by the sandbox.
 - Commit coherent completed changes at meaningful checkpoints, before handoff or switching tasks. Use small, atomic, signed Conventional Commits (`type(scope): description`).
 - Push at review-ready milestones or handoff when authorized and open a PR. The human developer reviews and merges. Report whether work is uncommitted, committed locally or pushed.
-- After an infra PR merges, the `infrastructure` submodule pointer in the parent repo needs a bump. Do that on its own `agent/` branch in the parent repo.
 
 ## Communication
 
