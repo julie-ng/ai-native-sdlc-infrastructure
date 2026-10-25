@@ -109,7 +109,10 @@ module "cluster" {
   agents_nodes_max_count = var.agents_nodes_max_count
 
   # Monitoring
-  agents_namespace = var.agents_namespace
+  platform_namespace      = var.platform_namespace
+  argo_namespace          = var.argo_namespace
+  github_broker_namespace = var.github_broker_namespace
+  agents_namespace        = var.agents_namespace
 
   # From networking
   aks_nodes_subnet_id = module.networking.subnets.aks_nodes.id
@@ -136,8 +139,12 @@ module "kubernetes" {
   workload_identities = local.workload_identities
   workload_client_ids = { for k, mi in module.identities.workloads : k => mi.client_id }
   agent_roles         = var.agent_roles
-  agents_namespace    = var.agents_namespace
-  azure_imds_endpoint = var.azure_imds_endpoint
+
+  platform_namespace      = var.platform_namespace
+  argo_namespace          = var.argo_namespace
+  github_broker_namespace = var.github_broker_namespace
+  agents_namespace        = var.agents_namespace
+  azure_imds_endpoint     = var.azure_imds_endpoint
 
   # Provider config depends on the cluster, which is not a dependency Terraform sees.
   depends_on = [module.cluster]
@@ -149,28 +156,29 @@ module "kubernetes" {
 # Platform services only. Agent pods get no cloud identity (ADR-003).
 # Each key becomes one managed identity with one federated credential per service account.
 # Service accounts are created by the kubernetes module; Helm charts reference them by name.
+# `namespace` also sets the federated credential subject (cluster module).
 
 locals {
   workload_identities = {
     workflow-service = {
-      namespace        = "platform"
+      namespace        = var.platform_namespace
       service_accounts = ["workflow-service"]
     }
     artifact-service = {
-      namespace        = "platform"
+      namespace        = var.platform_namespace
       service_accounts = ["artifact-service"]
     }
     token-broker = {
-      namespace        = "github-broker"
+      namespace        = var.github_broker_namespace
       service_accounts = ["token-broker"]
     }
     # Both read the workflow archive in Postgres
     argo-workflow-controller = {
-      namespace        = "argo"
+      namespace        = var.argo_namespace
       service_accounts = ["argo-workflow-controller"]
     }
     argo-server = {
-      namespace        = "argo"
+      namespace        = var.argo_namespace
       service_accounts = ["argo-server"]
     }
   }

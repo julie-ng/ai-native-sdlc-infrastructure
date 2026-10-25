@@ -80,6 +80,21 @@ variable "agents_nodes_max_count" {
 # Monitoring
 # ----------
 
+variable "platform_namespace" {
+  type        = string
+  description = "Platform namespace, for Container Insights namespace filtering."
+}
+
+variable "argo_namespace" {
+  type        = string
+  description = "Argo namespace, for Container Insights namespace filtering."
+}
+
+variable "github_broker_namespace" {
+  type        = string
+  description = "GitHub broker namespace, for Container Insights namespace filtering."
+}
+
 variable "agents_namespace" {
   type        = string
   description = "Agents namespace, for Container Insights namespace filtering."
