@@ -117,7 +117,31 @@ variable "agents_nodes_max_count" {
 
 variable "agent_roles" {
   type        = list(string)
-  description = "One ServiceAccount per agent role in the `agents` namespace (ADR-003)."
+  description = "One ServiceAccount per agent role in the agents namespace (ADR-003)."
+}
+
+# ============
+#  Kubernetes
+# ============
+
+variable "agents_namespace" {
+  type        = string
+  description = "Namespace for agent pods, which run LLM-driven code (ADR-003). Pod Security baseline and the IMDS NetworkPolicy apply here. Changing it recreates the namespace and everything in it."
+}
+
+# ================
+#  Azure Platform
+# ================
+# Owned by Azure, not this repo. Variables only so they're visible, not because they vary.
+
+variable "azure_imds_endpoint" {
+  type        = string
+  description = "Azure Instance Metadata Service IP. Fixed, non-routable and the same on every Azure VM; blocked for agent pods (issue #4)."
+
+  validation {
+    condition     = can(cidrhost("${var.azure_imds_endpoint}/32", 0))
+    error_message = "Must be a single IPv4 address, without a prefix length."
+  }
 }
 
 # ==========

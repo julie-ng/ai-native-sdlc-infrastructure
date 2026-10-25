@@ -14,8 +14,8 @@ Apply one at a time, in this order. Each depends on the outputs of the ones befo
 | 1 | [`networking`](./modules/networking/) | `ai-sdlc-networking-rg` | VNet, `aks-nodes-subnet` (service endpoints: Key Vault, Storage), empty `AzureFirewallSubnet`, ingress + egress static IPs |
 | 2 | [`shared`](./modules/shared/) | `ai-sdlc-shared-rg` | PostgreSQL Flexible Server (`workflow`, `argo` DBs), Blob Storage: `ai-sdlc{suffix}artifacts` (artifact service), `ai-sdlc{suffix}argo` (Argo artifact repository), Key Vault, ACR (pull only), Log Analytics (North Europe) |
 | 3 | [`identities`](./modules/identities/) | `ai-sdlc-identities-rg` | Persistent control-plane, kubelet and platform workload identities; role assignments for networking, ACR, Storage and Key Vault |
-| 4 | [`cluster`](./modules/cluster/) | `ai-sdlc-cluster-rg` | AKS (`system`, `platform` and `agents` pools, Key Vault CSI driver), cluster-specific workload federation, Container Insights, cluster-admin role assignment |
-| 5 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents`; ServiceAccounts; `argo-executor` ServiceAccount + Role; monitor agent ConfigMap |
+| 4 | [`cluster`](./modules/cluster/) | `ai-sdlc-cluster-rg` | AKS (`system`, `platform` and `agents` pools, Cilium data plane and network policy, Key Vault CSI driver), cluster-specific workload federation, Container Insights, cluster-admin role assignment |
+| 5 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents` (Pod Security `baseline` on `agents`); ServiceAccounts; `argo-executor` ServiceAccount + Role; IMDS-blocking NetworkPolicy on `agents`; monitor agent ConfigMap |
 
 Resource group names carry no random suffix. AKS creates its Azure-managed node resources in `ai-sdlc-aks-managed-rg`. Globally unique names (Key Vault, Storage, ACR, Postgres) and the cluster carry a random 4-character suffix, kept in state.
 
@@ -66,6 +66,9 @@ Managed identity names have no random suffix. Identities and their role assignme
 
 > [!IMPORTANT]
 > Before applying this module split, discard any earlier saved plan and generate a fresh one. `moved.tf` preserves Terraform addresses, but existing identities in the cluster resource group would still require replacement to use the new group; `prevent_destroy` blocks that replacement. If identities have already been deployed, review a separate migration before applying.
+
+> [!NOTE]
+> **Cilium ([#4](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/4)).** The deployed cluster was switched in place on 2026-10-24; the apply reimaged all pools (about 9 minutes). New clusters get Cilium at creation. Switching back to the `azure` data plane forces cluster replacement.
 
 > [!NOTE]
 > **Regions**: Defaults to `westeurope`; see [`defaults.auto.tfvars`](./defaults.auto.tfvars). PostgreSQL is pinned to `northeurope` because this subscription cannot provision it in West Europe. Log Analytics and the Container Insights data collection rule are also pinned to `northeurope` and must share a region.
@@ -125,6 +128,13 @@ The four namespaces separate platform services, Argo, the GitHub broker and agen
 | `github-broker` | GitHub token broker, with its workload-identity ServiceAccount (`token-broker`). |
 | `agents` | Agent workflow pods; ServiceAccounts for `planner`, `coder`, `reviewer` and `open-pr`; `argo-executor` ServiceAccount and RBAC. Agent ServiceAccounts have no cloud identity. |
 
+Agent pods run LLM-driven code, so `agents` has two extra controls:
+
+- **Pod Security `baseline`, enforced.** Rejects `hostNetwork`, `privileged`, `hostPath`, host ports and capabilities beyond the container runtime defaults, so no Docker-in-Docker. `restricted` is warn/audit only: `kubectl apply` prints what templates would need for it.
+- **NetworkPolicy `deny-imds`.** Allows all egress except `169.254.169.254`, so pods can't get tokens for node identities such as the kubelet's. Only IMDS is blocked: agents still reach every pod and the internet.
+
+The platform also blocks some addresses itself. For example, [WireServer](https://learn.microsoft.com/en-us/azure/virtual-network/what-is-ip-address-168-63-129-16) (`168.63.129.16`, the VM agent's channel to Azure) times out from `agents` pods on ports 80 and 32526, verified 2026-10-25. `deny-imds` doesn't cause this, and this repo doesn't enforce it.
+
 ### After apply — manual steps
 
 Kept out of Terraform so secrets never land in state, or because no azurerm resource covers it.
@@ -154,7 +164,7 @@ Kept out of Terraform so secrets never land in state, or because no azurerm reso
 | `10.0.0.0/16` | VNet |
 | `10.0.0.0/22` | `aks-nodes-subnet` — nodes only |
 | `10.0.8.0/26` | `AzureFirewallSubnet` — reserved, no firewall |
-| `10.244.0.0/16` | Pods (CNI Overlay, outside VNet) |
+| `10.244.0.0/16` | Pods (CNI Overlay with Cilium, outside VNet) |
 | `172.16.0.0/16` | Kubernetes services; DNS `172.16.0.10` |
 
 | Service | Access |
@@ -163,7 +173,7 @@ Kept out of Terraform so secrets never land in state, or because no azurerm reso
 | PostgreSQL | Public endpoint, firewall: cluster egress IP, `admin_ip_ranges`. Flexible Server has no service endpoint support. Public endpoint does not imply public-internet routing between Azure services; see [Microsoft global network](https://learn.microsoft.com/en-us/azure/networking/microsoft-global-network). |
 | ACR | Public endpoint. Basic SKU has no network rules. Kubelet pulls; nothing in this repo or GitHub can push — images are pushed manually. |
 
-Egress: all cluster outbound traffic leaves via `ai-sdlc-egress-ip` (load balancer outbound IP). No egress filtering.
+Egress: all cluster outbound traffic leaves via `ai-sdlc-egress-ip` (load balancer outbound IP). No egress filtering, except IMDS for `agents`.
 
 ## Unverified
 
@@ -175,9 +185,20 @@ POC verification checklist (results reported by the human developer):
 - [x] Final untargeted `make plan` shows no pending changes after all stages.
 - [x] `make start-cluster`, node readiness, and `make kubecontext` after restart. Start the cluster before planning or applying Kubernetes resources.
 - [ ] Workload identity authentication to Blob, Key Vault and PostgreSQL, including the manual database roles and Kubernetes workload labels.
-- [ ] First workflow execution, Argo executor token mounts/RBAC, agent pool selection/tolerations, and no Argo artifact uploads from agent steps in the POC.
+- [ ] First workflow execution, Argo executor token mounts/RBAC, agent pool selection/tolerations, and no Argo artifact uploads from agent steps in the POC. The executor must reach the API server under `deny-imds`; the `401` from `/healthz` in an `agents` pod suggests it can.
 - [ ] Monitoring table selection, ConfigMap filters, observed ingestion volume and cap behavior. Successful resource deployment does not prove logs are flowing or filtering correctly.
 - [ ] Identity continuity across a cluster rebuild; this lifecycle has not been exercised yet.
+
+Agent pod restrictions ([#4](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/4)), results reported by the human developer on 2026-10-25 ([details](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/4#issuecomment-6394927018)):
+
+- [x] `make plan-cluster` showed an in-place update, not a replace. Cilium runs on every node; no kube-proxy pods.
+- [x] From a pod in `agents`, IMDS instance metadata and token requests time out (`curl -s -H Metadata:true --connect-timeout 10 "http://169.254.169.254/metadata/instance?api-version=2023-11-15"`).
+- [x] Control: the same request from a pod in `default` returns metadata, so the policy is what blocks `agents`.
+- [x] From the `agents` pod, `curl https://github.com` returns `200`, `getent hosts kubernetes.default.svc.cluster.local` resolves, and the API server answers `401`.
+- [x] A pod with `hostNetwork: true` in `agents` is rejected: `violates PodSecurity "baseline:latest"`.
+- [x] `kubectl get netpol deny-imds -n agents -o yaml` shows `namespaceSelector: {}`.
+- [x] Container Insights still collects after the switch: `KubePodInventory` shows the test pod in `agents`.
+- [x] Node identities: all pools carry the kubelet identity (`AcrPull` on the registry only) and the Key Vault CSI add-on identity (no role assignments). No Container Insights identity is attached.
 
 ## Docs
 

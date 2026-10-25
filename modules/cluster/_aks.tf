@@ -60,10 +60,15 @@ resource "azurerm_kubernetes_cluster" "aks" {
     }
   }
 
-  # Public API server (default). CNI Overlay, no network policy engine.
+  # Public API server (default). CNI Overlay with Cilium as data plane and network policy engine,
+  # needed for the agents IMDS NetworkPolicy (kubernetes/network-policies.tf, issue #4).
+  # Switching from the azure data plane is in place but reimages all pools; switching back forces
+  # cluster replacement (azurerm v5.10.0 internal/services/containers/kubernetes_cluster_resource.go).
   network_profile {
     network_plugin      = "azure"
     network_plugin_mode = "overlay"
+    network_data_plane  = "cilium"
+    network_policy      = "cilium"
     pod_cidr            = var.pod_cidr
     service_cidr        = var.service_cidr
     dns_service_ip      = var.dns_service_ip

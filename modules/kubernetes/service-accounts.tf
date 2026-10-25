@@ -40,7 +40,7 @@ resource "kubernetes_service_account_v1" "agents" {
 
   metadata {
     name      = each.value
-    namespace = kubernetes_namespace_v1.ns["agents"].metadata[0].name
+    namespace = kubernetes_namespace_v1.ns[var.agents_namespace].metadata[0].name
   }
 
   automount_service_account_token = false
