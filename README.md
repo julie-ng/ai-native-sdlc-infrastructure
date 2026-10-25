@@ -185,7 +185,7 @@ POC verification checklist (results reported by the human developer):
 - [x] Final untargeted `make plan` shows no pending changes after all stages.
 - [x] `make start-cluster`, node readiness, and `make kubecontext` after restart. Start the cluster before planning or applying Kubernetes resources.
 - [ ] Workload identity authentication to Blob, Key Vault and PostgreSQL, including the manual database roles and Kubernetes workload labels.
-- [ ] First workflow execution, Argo executor token mounts/RBAC, agent pool selection/tolerations, and no Argo artifact uploads from agent steps in the POC.
+- [ ] First workflow execution, Argo executor token mounts/RBAC, agent pool selection/tolerations, and no Argo artifact uploads from agent steps in the POC. The executor must reach the API server under `deny-imds`; the `401` from `/healthz` in an `agents` pod suggests it can.
 - [ ] Monitoring table selection, ConfigMap filters, observed ingestion volume and cap behavior. Successful resource deployment does not prove logs are flowing or filtering correctly.
 - [ ] Identity continuity across a cluster rebuild; this lifecycle has not been exercised yet.
 
@@ -196,7 +196,6 @@ Agent pod restrictions ([#4](https://github.com/julie-ng/ai-native-sdlc-infrastr
 - [x] Control: the same request from a pod in `default` returns metadata, so the policy is what blocks `agents`.
 - [x] From the `agents` pod, `curl https://github.com` returns `200`, `getent hosts kubernetes.default.svc.cluster.local` resolves, and the API server answers `401`.
 - [x] A pod with `hostNetwork: true` in `agents` is rejected: `violates PodSecurity "baseline:latest"`.
-- [ ] An Argo hello-world workflow in `agents` succeeds. Argo isn't deployed yet; the API-server check above shows the executor's path isn't blocked.
 - [x] `kubectl get netpol deny-imds -n agents -o yaml` shows `namespaceSelector: {}`.
 - [x] Container Insights still collects after the switch: `KubePodInventory` shows the test pod in `agents`.
 - [x] Node identities: all pools carry the kubelet identity (`AcrPull` on the registry only) and the Key Vault CSI add-on identity (no role assignments). No Container Insights identity is attached.
