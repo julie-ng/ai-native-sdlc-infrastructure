@@ -67,8 +67,8 @@ Managed identity names have no random suffix. Identities and their role assignme
 > [!IMPORTANT]
 > Before applying this module split, discard any earlier saved plan and generate a fresh one. `moved.tf` preserves Terraform addresses, but existing identities in the cluster resource group would still require replacement to use the new group; `prevent_destroy` blocks that replacement. If identities have already been deployed, review a separate migration before applying.
 
-> [!IMPORTANT]
-> **One-off: switching the deployed cluster to Cilium ([#4](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/4)).** `make plan-cluster` must show `azurerm_kubernetes_cluster.aks` updated in place (`~`), not replaced. If it shows a replace, stop. The apply reimages all pools at once; Cilium enforces policies only after every node is reimaged. Then `make plan-k8s` and apply. Switching back to the `azure` data plane forces cluster replacement.
+> [!NOTE]
+> **Cilium ([#4](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/4)).** The deployed cluster was switched in place on 2026-10-24; the apply reimaged all pools (about 9 minutes). New clusters get Cilium at creation. Switching back to the `azure` data plane forces cluster replacement.
 
 > [!NOTE]
 > **Regions**: Defaults to `westeurope`; see [`defaults.auto.tfvars`](./defaults.auto.tfvars). PostgreSQL is pinned to `northeurope` because this subscription cannot provision it in West Europe. Log Analytics and the Container Insights data collection rule are also pinned to `northeurope` and must share a region.
@@ -187,16 +187,17 @@ POC verification checklist (results reported by the human developer):
 - [ ] Monitoring table selection, ConfigMap filters, observed ingestion volume and cap behavior. Successful resource deployment does not prove logs are flowing or filtering correctly.
 - [ ] Identity continuity across a cluster rebuild; this lifecycle has not been exercised yet.
 
-Agent pod restrictions ([#4](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/4)), after the Cilium switch and the Kubernetes apply:
+Agent pod restrictions ([#4](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/4)), results reported by the human developer on 2026-10-25 ([details](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/4#issuecomment-6394927018)):
 
-- [ ] `make plan-cluster` showed an in-place update, not a replace.
-- [ ] From a pod in `agents`, `curl -s -H Metadata:true --connect-timeout 10 "http://169.254.169.254/metadata/instance?api-version=2023-11-15"` times out. This is the main claim: that Cilium treats IMDS as an outside address and the `except` blocks it.
-- [ ] From the same pod, `curl https://github.com` and `nslookup kubernetes.default` succeed.
-- [ ] A pod with `hostNetwork: true` in `agents` is rejected at admission.
-- [ ] An Argo hello-world workflow in `agents` succeeds: the executor reaches the API server under the policy.
-- [ ] `kubectl get netpol deny-imds -n agents -o yaml` shows `namespaceSelector: {}`.
-- [ ] Container Insights still collects logs after the switch.
-- [ ] Identities attached to the node scale sets and their roles: `az vmss identity show` on each, then `az role assignment list --assignee <principal>`.
+- [x] `make plan-cluster` showed an in-place update, not a replace. Cilium runs on every node; no kube-proxy pods.
+- [x] From a pod in `agents`, IMDS instance metadata and token requests time out (`curl -s -H Metadata:true --connect-timeout 10 "http://169.254.169.254/metadata/instance?api-version=2023-11-15"`).
+- [x] Control: the same request from a pod in `default` returns metadata, so the policy is what blocks `agents`.
+- [x] From the `agents` pod, `curl https://github.com` returns `200`, `getent hosts kubernetes.default.svc.cluster.local` resolves, and the API server answers `401`.
+- [x] A pod with `hostNetwork: true` in `agents` is rejected: `violates PodSecurity "baseline:latest"`.
+- [ ] An Argo hello-world workflow in `agents` succeeds. Argo isn't deployed yet; the API-server check above shows the executor's path isn't blocked.
+- [x] `kubectl get netpol deny-imds -n agents -o yaml` shows `namespaceSelector: {}`.
+- [x] Container Insights still collects after the switch: `KubePodInventory` shows the test pod in `agents`.
+- [x] Node identities: all pools carry the kubelet identity (`AcrPull` on the registry only) and the Key Vault CSI add-on identity (no role assignments). No Container Insights identity is attached.
 
 ## Docs
 
