@@ -8,7 +8,6 @@ Rules for any agent working in this repo, regardless of harness or model. This f
 ## About this repo
 
 - Terraform for the AI SDLC platform on Azure: one AKS cluster plus its backing services. Single environment (`dev`).
-- Design lives in the parent repo, [julie-ng/ai-native-sdlc](https://github.com/julie-ng/ai-native-sdlc): [architecture](https://github.com/julie-ng/ai-native-sdlc/tree/main/architecture) and [ADRs](https://github.com/julie-ng/ai-native-sdlc/tree/main/architecture/decisions). This repo implements them; it does not redefine them.
 - Infrastructure choices and trade-offs: [`docs/decisions.md`](./docs/decisions.md). Read it before changing anything.
 
 ## Reading order
