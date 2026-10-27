@@ -18,6 +18,7 @@ locals {
 #   3. identities   (persistent principals and grants)
 #   4. cluster
 #   5. kubernetes  (in-cluster resources)
+#   6. platform_stop_mi (GitHub OIDC and stop grants)
 
 # ============
 #  Networking
@@ -148,6 +149,20 @@ module "kubernetes" {
 
   # Provider config depends on the cluster, which is not a dependency Terraform sees.
   depends_on = [module.cluster]
+}
+
+# =================
+#  Platform Stop
+# =================
+
+module "platform_stop_mi" {
+  source = "./modules/platform_stop_mi"
+
+  resource_group_name = module.identities.resource_group.name
+  aks_cluster_id      = module.cluster.summary.aks_cluster.id
+  postgres_server_id  = module.shared.postgres.id
+  settings            = var.platform_stop
+  tags                = var.default_tags
 }
 
 # =====================

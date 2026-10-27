@@ -1,0 +1,44 @@
+name: Platform stop
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+
+jobs:
+  stop-cluster:
+    runs-on: ubuntu-24.04
+    env:
+      AKS_RESOURCE_GROUP: ${{ vars.AKS_RESOURCE_GROUP }}
+      AKS_CLUSTER_NAME: ${{ vars.AKS_CLUSTER_NAME }}
+    steps:
+      - name: Sign in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_GH_STOP_PLATFORM_MI_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Stop cluster
+        run: |
+          az aks stop \
+            --resource-group "$AKS_RESOURCE_GROUP" \
+            --name "$AKS_CLUSTER_NAME"
+
+  stop-database:
+    runs-on: ubuntu-24.04
+    env:
+      AZ_POSTGRES_RESOURCE_GROUP: ${{ vars.AZ_POSTGRES_RESOURCE_GROUP }}
+      AZ_POSTGRES_SERVER_NAME: ${{ vars.AZ_POSTGRES_SERVER_NAME }}
+    steps:
+      - name: Sign in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_GH_STOP_PLATFORM_MI_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Stop database
+        run: |
+          az postgres flexible-server stop \
+            --resource-group "$AZ_POSTGRES_RESOURCE_GROUP" \
+            --name "$AZ_POSTGRES_SERVER_NAME"

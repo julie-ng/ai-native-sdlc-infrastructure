@@ -67,3 +67,16 @@ azure_imds_endpoint = "169.254.169.254"
 postgres_version   = "17"
 postgres_sku_name  = "B_Standard_B1ms" # Burstable
 postgres_databases = ["workflow", "argo"]
+
+# =================
+#  Platform Stop
+# =================
+
+platform_stop = {
+  identity_name = "platform-stop-github-mi"
+  issuer        = "https://token.actions.githubusercontent.com"
+  audience      = "api://AzureADTokenExchange"
+  subject       = "repo:julie-ng/ai-native-sdlc-infrastructure:ref:refs/heads/main"
+  aks_role      = "Azure Kubernetes Service Contributor Role"
+  postgres_role = "Contributor"
+}
