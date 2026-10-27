@@ -73,7 +73,7 @@ postgres_databases = ["workflow", "argo"]
 # =================
 
 platform_stop = {
-  identity_name = "platform-stop-mi"
+  identity_name = "platform-stop-github-mi"
   issuer        = "https://token.actions.githubusercontent.com"
   audience      = "api://AzureADTokenExchange"
   subject       = "repo:julie-ng/ai-native-sdlc-infrastructure:ref:refs/heads/main"
