@@ -1,4 +1,4 @@
-name: Shutdown platform
+name: Platform stop
 
 on:
   workflow_dispatch:

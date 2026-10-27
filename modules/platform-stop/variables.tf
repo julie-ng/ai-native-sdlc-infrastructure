@@ -12,17 +12,17 @@ variable "settings" {
     aks_role      = string
     postgres_role = string
   })
-  description = "GitHub shutdown identity, federation trust and built-in roles."
+  description = "Platform stop identity, federation trust and built-in roles."
 }
 
 variable "aks_cluster_id" {
   type        = string
-  description = "Exact AKS resource scope for the shutdown role."
+  description = "Exact AKS resource scope for the stop role."
 }
 
 variable "postgres_server_id" {
   type        = string
-  description = "Exact PostgreSQL Flexible Server scope for the shutdown role."
+  description = "Exact PostgreSQL Flexible Server scope for the stop role."
 }
 
 variable "tags" {

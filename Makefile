@@ -28,8 +28,8 @@ plan-cluster:
 plan-k8s:
 	terraform plan -target=module.kubernetes -out plan.tfplan
 
-plan-github-shutdown:
-	terraform plan -target=module.github_shutdown -out plan.tfplan
+plan-platform-stop:
+	terraform plan -target=module.platform_stop -out plan.tfplan
 
 # Full plan - should show no changes once all stages are applied
 plan:

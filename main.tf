@@ -18,7 +18,7 @@ locals {
 #   3. identities   (persistent principals and grants)
 #   4. cluster
 #   5. kubernetes  (in-cluster resources)
-#   6. github_shutdown (GitHub OIDC and shutdown grants)
+#   6. platform_stop (GitHub OIDC and stop grants)
 
 # ============
 #  Networking
@@ -152,16 +152,16 @@ module "kubernetes" {
 }
 
 # =================
-#  GitHub Shutdown
+#  Platform Stop
 # =================
 
-module "github_shutdown" {
-  source = "./modules/github-shutdown"
+module "platform_stop" {
+  source = "./modules/platform-stop"
 
   resource_group_name = module.identities.resource_group.name
   aks_cluster_id      = module.cluster.summary.aks_cluster.id
   postgres_server_id  = module.shared.postgres.id
-  settings            = var.github_shutdown
+  settings            = var.platform_stop
   tags                = var.default_tags
 }
 

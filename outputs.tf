@@ -14,12 +14,12 @@ output "summary" {
   }
 }
 
-output "github_shutdown" {
-  description = "Repository Actions variables for the shutdown workflow; identifiers only, no credentials."
+output "platform_stop" {
+  description = "Repository Actions variables for the stop workflow; identifiers only, no credentials."
   value = {
-    AZURE_CLIENT_ID            = module.github_shutdown.identity.client_id
-    AZURE_TENANT_ID            = module.github_shutdown.identity.tenant_id
-    AZURE_SUBSCRIPTION_ID      = module.github_shutdown.identity.subscription_id
+    AZURE_CLIENT_ID            = module.platform_stop.identity.client_id
+    AZURE_TENANT_ID            = module.platform_stop.identity.tenant_id
+    AZURE_SUBSCRIPTION_ID      = module.platform_stop.identity.subscription_id
     AKS_RESOURCE_GROUP         = module.cluster.summary.resource_group.name
     AKS_CLUSTER_NAME           = module.cluster.summary.aks_cluster.name
     AZ_POSTGRES_RESOURCE_GROUP = module.shared.resource_group.name

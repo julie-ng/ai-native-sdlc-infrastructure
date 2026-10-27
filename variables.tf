@@ -197,10 +197,10 @@ variable "postgres_databases" {
 }
 
 # =================
-#  GitHub Shutdown
+#  Platform Stop
 # =================
 
-variable "github_shutdown" {
+variable "platform_stop" {
   type = object({
     identity_name = string
     issuer        = string
@@ -209,5 +209,5 @@ variable "github_shutdown" {
     aks_role      = string
     postgres_role = string
   })
-  description = "Shutdown workflow identity, trusted GitHub subject and resource-scoped built-in roles. Issuer and audience are GitHub/Azure-owned OIDC values."
+  description = "Platform stop workflow identity, trusted GitHub subject and resource-scoped built-in roles. Issuer and audience are GitHub/Azure-owned OIDC values."
 }

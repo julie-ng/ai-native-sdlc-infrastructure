@@ -69,11 +69,11 @@ postgres_sku_name  = "B_Standard_B1ms" # Burstable
 postgres_databases = ["workflow", "argo"]
 
 # =================
-#  GitHub Shutdown
+#  Platform Stop
 # =================
 
-github_shutdown = {
-  identity_name = "github-platform-shutdown-mi"
+platform_stop = {
+  identity_name = "platform-stop-mi"
   issuer        = "https://token.actions.githubusercontent.com"
   audience      = "api://AzureADTokenExchange"
   subject       = "repo:julie-ng/ai-native-sdlc-infrastructure:ref:refs/heads/main"
