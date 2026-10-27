@@ -18,7 +18,7 @@ locals {
 #   3. identities   (persistent principals and grants)
 #   4. cluster
 #   5. kubernetes  (in-cluster resources)
-#   6. platform_stop (GitHub OIDC and stop grants)
+#   6. platform_stop_mi (GitHub OIDC and stop grants)
 
 # ============
 #  Networking
@@ -155,8 +155,8 @@ module "kubernetes" {
 #  Platform Stop
 # =================
 
-module "platform_stop" {
-  source = "./modules/platform-stop"
+module "platform_stop_mi" {
+  source = "./modules/platform_stop_mi"
 
   resource_group_name = module.identities.resource_group.name
   aks_cluster_id      = module.cluster.summary.aks_cluster.id

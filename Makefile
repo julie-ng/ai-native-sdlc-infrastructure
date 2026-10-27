@@ -29,7 +29,7 @@ plan-k8s:
 	terraform plan -target=module.kubernetes -out plan.tfplan
 
 plan-platform-stop:
-	terraform plan -target=module.platform_stop -out plan.tfplan
+	terraform plan -target=module.platform_stop_mi -out plan.tfplan
 
 # Full plan - should show no changes once all stages are applied
 plan:

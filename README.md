@@ -16,7 +16,7 @@ Apply one at a time, in this order. Each depends on the outputs of the ones befo
 | 3 | [`identities`](./modules/identities/) | `ai-sdlc-identities-rg` | Persistent control-plane, kubelet and platform workload identities; role assignments for networking, ACR, Storage and Key Vault |
 | 4 | [`cluster`](./modules/cluster/) | `ai-sdlc-cluster-rg` | AKS (`system`, `platform` and `agents` pools, Cilium data plane and network policy, Key Vault CSI driver), cluster-specific workload federation, Container Insights, cluster-admin role assignment |
 | 5 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents` (Pod Security `baseline` on `agents`); ServiceAccounts; `argo-executor` ServiceAccount + Role; IMDS-blocking NetworkPolicy on `agents`; monitor agent ConfigMap |
-| 6 | [`platform_stop`](./modules/platform-stop/) | Existing `ai-sdlc-identities-rg` (data lookup) | GitHub OIDC managed identity, federation for `main`, AKS Contributor on the cluster and Contributor on the PostgreSQL server |
+| 6 | [`platform_stop_mi`](./modules/platform_stop_mi/) | Existing `ai-sdlc-identities-rg` (data lookup) | GitHub OIDC managed identity, federation for `main`, AKS Contributor on the cluster and Contributor on the PostgreSQL server |
 
 Resource group names carry no random suffix. AKS creates its Azure-managed node resources in `ai-sdlc-aks-managed-rg`. Globally unique names (Key Vault, Storage, ACR, Postgres) and the cluster carry a random 4-character suffix, kept in state.
 
@@ -195,7 +195,7 @@ POC verification checklist (results reported by the human developer):
 - [x] Final untargeted `make plan` shows no pending changes after all stages.
 - [x] `make start-cluster`, node readiness, and `make kubecontext` after restart. Start the cluster before planning or applying Kubernetes resources.
 - [ ] Platform/database start and stop using configured resource names.
-- [ ] New `platform_stop` module: identities-group lookup, identity/federation creation, built-in role assignments and first manual stop workflow (including CLI operation polling). Offline checks do not prove Azure authorization or runtime behavior.
+- [ ] New `platform_stop_mi` module: identities-group lookup, identity/federation creation, built-in role assignments and first manual stop workflow (including CLI operation polling). Offline checks do not prove Azure authorization or runtime behavior.
 - [ ] Workload identity authentication to Blob, Key Vault and PostgreSQL, including the manual database roles and Kubernetes workload labels.
 - [ ] First workflow execution, Argo executor token mounts/RBAC, agent pool selection/tolerations, and no Argo artifact uploads from agent steps in the POC. The executor must reach the API server under `deny-imds`; the `401` from `/healthz` in an `agents` pod suggests it can.
 - [ ] Monitoring table selection, ConfigMap filters, observed ingestion volume and cap behavior. Successful resource deployment does not prove logs are flowing or filtering correctly.
