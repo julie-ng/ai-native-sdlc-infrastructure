@@ -194,8 +194,8 @@ POC verification checklist (results reported by the human developer):
 - [x] `make stop-cluster` completes successfully.
 - [x] Final untargeted `make plan` shows no pending changes after all stages.
 - [x] `make start-cluster`, node readiness, and `make kubecontext` after restart. Start the cluster before planning or applying Kubernetes resources.
-- [ ] Platform/database start and stop using configured resource names.
-- [ ] New `platform_stop_mi` module: identities-group lookup, identity/federation creation, built-in role assignments and first manual stop workflow (including CLI operation polling). Offline checks do not prove Azure authorization or runtime behavior.
+- [x] Platform/database start and stop using configured resource names.
+- [x] New `platform_stop_mi` module: identities-group lookup, identity/federation creation, built-in role assignments and first manual stop workflow. 
 - [ ] Workload identity authentication to Blob, Key Vault and PostgreSQL, including the manual database roles and Kubernetes workload labels.
 - [ ] First workflow execution, Argo executor token mounts/RBAC, agent pool selection/tolerations, and no Argo artifact uploads from agent steps in the POC. The executor must reach the API server under `deny-imds`; the `401` from `/healthz` in an `agents` pod suggests it can.
 - [ ] Monitoring table selection, ConfigMap filters, observed ingestion volume and cap behavior. Successful resource deployment does not prove logs are flowing or filtering correctly.
