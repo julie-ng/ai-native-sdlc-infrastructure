@@ -20,13 +20,16 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       - name: Stop cluster
-        run: az aks stop --resource-group "$AKS_RESOURCE_GROUP" --name "$AKS_CLUSTER_NAME"
+        run: |
+          az aks stop \
+            --resource-group "$AKS_RESOURCE_GROUP" \
+            --name "$AKS_CLUSTER_NAME"
 
   stop-database:
     runs-on: ubuntu-24.04
     env:
-      POSTGRES_RESOURCE_GROUP: ${{ vars.POSTGRES_RESOURCE_GROUP }}
-      POSTGRES_SERVER_NAME: ${{ vars.POSTGRES_SERVER_NAME }}
+      AZ_POSTGRES_RESOURCE_GROUP: ${{ vars.AZ_POSTGRES_RESOURCE_GROUP }}
+      AZ_POSTGRES_SERVER_NAME: ${{ vars.AZ_POSTGRES_SERVER_NAME }}
     steps:
       - name: Sign in to Azure
         uses: azure/login@v2
@@ -35,4 +38,7 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       - name: Stop database
-        run: az postgres flexible-server stop --resource-group "$POSTGRES_RESOURCE_GROUP" --name "$POSTGRES_SERVER_NAME"
+        run: |
+          az postgres flexible-server stop \
+            --resource-group "$AZ_POSTGRES_RESOURCE_GROUP" \
+            --name "$AZ_POSTGRES_SERVER_NAME"
