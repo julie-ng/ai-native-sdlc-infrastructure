@@ -18,6 +18,7 @@ locals {
 #   3. identities   (persistent principals and grants)
 #   4. cluster
 #   5. kubernetes  (in-cluster resources)
+#   6. github_shutdown (GitHub OIDC and shutdown grants)
 
 # ============
 #  Networking
@@ -148,6 +149,20 @@ module "kubernetes" {
 
   # Provider config depends on the cluster, which is not a dependency Terraform sees.
   depends_on = [module.cluster]
+}
+
+# =================
+#  GitHub Shutdown
+# =================
+
+module "github_shutdown" {
+  source = "./modules/github-shutdown"
+
+  resource_group_name = module.identities.resource_group.name
+  aks_cluster_id      = module.cluster.summary.aks_cluster.id
+  postgres_server_id  = module.shared.postgres.id
+  settings            = var.github_shutdown
+  tags                = var.default_tags
 }
 
 # =====================

@@ -195,3 +195,19 @@ variable "postgres_databases" {
   type        = list(string)
   description = "One server, separate databases (ADR-005)."
 }
+
+# =================
+#  GitHub Shutdown
+# =================
+
+variable "github_shutdown" {
+  type = object({
+    identity_name = string
+    issuer        = string
+    audience      = string
+    subject       = string
+    aks_role      = string
+    postgres_role = string
+  })
+  description = "Shutdown workflow identity, trusted GitHub subject and resource-scoped built-in roles. Issuer and audience are GitHub/Azure-owned OIDC values."
+}

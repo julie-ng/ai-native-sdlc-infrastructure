@@ -16,6 +16,7 @@ Apply one at a time, in this order. Each depends on the outputs of the ones befo
 | 3 | [`identities`](./modules/identities/) | `ai-sdlc-identities-rg` | Persistent control-plane, kubelet and platform workload identities; role assignments for networking, ACR, Storage and Key Vault |
 | 4 | [`cluster`](./modules/cluster/) | `ai-sdlc-cluster-rg` | AKS (`system`, `platform` and `agents` pools, Cilium data plane and network policy, Key Vault CSI driver), cluster-specific workload federation, Container Insights, cluster-admin role assignment |
 | 5 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents` (Pod Security `baseline` on `agents`); ServiceAccounts; `argo-executor` ServiceAccount + Role; IMDS-blocking NetworkPolicy on `agents`; monitor agent ConfigMap |
+| 6 | [`github_shutdown`](./modules/github-shutdown/) | Existing `ai-sdlc-identities-rg` (data lookup) | GitHub OIDC managed identity, federation for `main`, AKS Contributor on the cluster and Contributor on the PostgreSQL server |
 
 Resource group names carry no random suffix. AKS creates its Azure-managed node resources in `ai-sdlc-aks-managed-rg`. Globally unique names (Key Vault, Storage, ACR, Postgres) and the cluster carry a random 4-character suffix, kept in state.
 
@@ -55,6 +56,7 @@ make plan-identities && make apply
 make plan-cluster    && make apply
 make kubecontext
 make plan-k8s        && make apply
+make plan-github-shutdown && make apply
 make plan            # expect: no changes
 ```
 
@@ -88,7 +90,9 @@ make start-cluster
 
 Set `AKS_RESOURCE_GROUP`, `AKS_CLUSTER_NAME`, `POSTGRES_RESOURCE_GROUP` and `POSTGRES_SERVER_NAME` in your shell (or pass them as Make variables). Start/stop commands call Azure CLI directly and wait for completion. Local platform commands start PostgreSQL before AKS and stop AKS before PostgreSQL; a failed command stops the sequence. Start the platform before running Terraform against Kubernetes resources.
 
-The **Shutdown platform** GitHub workflow is manual-only and stops AKS and PostgreSQL in parallel jobs. Configure repository Actions variables for the four resource names above plus `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID`. Azure login uses OIDC federation for `main`; no saved Azure credential or Terraform state is needed. Scheduling is deferred to [#14](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/14).
+The **Shutdown platform** GitHub workflow is manual-only and stops AKS and PostgreSQL in parallel jobs. After the cluster exists, run `make init`, then review `make plan-github-shutdown` and run `make apply`. The deployer needs permission to create managed identities/federation in the identities group and assign roles on both target resources. The module uses AzureRM, with no new provider or credentials.
+
+Copy `terraform output -json github_shutdown` values into repository Actions variables. The output uses the workflow's `AZ_POSTGRES_RESOURCE_GROUP` / `AZ_POSTGRES_SERVER_NAME` names; local Make commands use `POSTGRES_RESOURCE_GROUP` / `POSTGRES_SERVER_NAME`. OIDC trusts this repository's `main` branch using GitHub's default subject format. The built-in roles also allow modification/deletion, scoped to the individual resources; no ACR push is granted. No saved Azure credential or Terraform state is needed by the workflow. Scheduling is deferred to [#14](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/14).
 
 [AKS considerations](https://learn.microsoft.com/en-us/azure/aks/start-stop-cluster): restart depends on capacity; wait 15–30 minutes after stopping before starting. Standalone pods are deleted. [PostgreSQL restarts automatically after seven days](https://learn.microsoft.com/en-us/azure/postgresql/configure-maintain/how-to-stop-server); storage and other retained services remain billable.
 
@@ -191,7 +195,7 @@ POC verification checklist (results reported by the human developer):
 - [x] Final untargeted `make plan` shows no pending changes after all stages.
 - [x] `make start-cluster`, node readiness, and `make kubecontext` after restart. Start the cluster before planning or applying Kubernetes resources.
 - [ ] Platform/database start and stop using configured resource names.
-- [ ] GitHub OIDC federation, resource-scoped shutdown RBAC including CLI operation polling, and first manual shutdown workflow. Offline checks do not prove Azure authorization or runtime behavior.
+- [ ] New `github_shutdown` module: identities-group lookup, identity/federation creation, built-in role assignments and first manual shutdown workflow (including CLI operation polling). Offline checks do not prove Azure authorization or runtime behavior.
 - [ ] Workload identity authentication to Blob, Key Vault and PostgreSQL, including the manual database roles and Kubernetes workload labels.
 - [ ] First workflow execution, Argo executor token mounts/RBAC, agent pool selection/tolerations, and no Argo artifact uploads from agent steps in the POC. The executor must reach the API server under `deny-imds`; the `401` from `/healthz` in an `agents` pod suggests it can.
 - [ ] Monitoring table selection, ConfigMap filters, observed ingestion volume and cap behavior. Successful resource deployment does not prove logs are flowing or filtering correctly.
