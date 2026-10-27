@@ -1,6 +1,8 @@
 name: Stop Platform (AKS + Postgres)
 
 on:
+  schedule:
+    - cron: "0 20 * * *"  # Daily 20:00 UTC
   workflow_dispatch:
 
 permissions:
