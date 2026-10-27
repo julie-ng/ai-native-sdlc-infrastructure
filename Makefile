@@ -43,10 +43,20 @@ cluster_rg="$$(printf '%s\n' "$$cluster_output" | jq -er '.resource_group.name |
 cluster_name="$$(printf '%s\n' "$$cluster_output" | jq -er '.aks_cluster.name | select(type == "string" and length > 0)')"
 endef
 
-.PHONY: start-cluster stop-cluster kubecontext
+.PHONY: start-cluster stop-cluster start-database stop-database start-platform stop-platform kubecontext
 start-cluster stop-cluster:
-	@$(cluster_target); \
-	az aks $(patsubst %-cluster,%,$@) --resource-group "$$cluster_rg" --name "$$cluster_name"
+	az aks $(patsubst %-cluster,%,$@) --resource-group "$(AKS_RESOURCE_GROUP)" --name "$(AKS_CLUSTER_NAME)"
+
+start-database stop-database:
+	az postgres flexible-server $(patsubst %-database,%,$@) --resource-group "$(POSTGRES_RESOURCE_GROUP)" --name "$(POSTGRES_SERVER_NAME)"
+
+start-platform:
+	$(MAKE) start-database
+	$(MAKE) start-cluster
+
+stop-platform:
+	$(MAKE) stop-cluster
+	$(MAKE) stop-database
 
 kubecontext:
 	@$(cluster_target); \

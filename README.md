@@ -73,18 +73,24 @@ Managed identity names have no random suffix. Identities and their role assignme
 > [!NOTE]
 > **Regions**: Defaults to `westeurope`; see [`defaults.auto.tfvars`](./defaults.auto.tfvars). PostgreSQL is pinned to `northeurope` because this subscription cannot provision it in West Europe. Log Analytics and the Container Insights data collection rule are also pinned to `northeurope` and must share a region.
 
-### Start and stop the cluster
+### Start and stop the platform
 
-After a successful deployment, with the local Terraform state available and Azure CLI signed into the deployment subscription:
+With Azure CLI signed into the deployment subscription:
 
 ```sh
-make stop-cluster
+make stop-platform    # AKS, then PostgreSQL
+make start-platform   # PostgreSQL, then AKS
+make stop-database    # PostgreSQL only
+make start-database
+make stop-cluster     # AKS only (existing command)
 make start-cluster
 ```
 
-These run `az aks stop` / `az aks start` using the resource group and cluster name from `terraform output -json cluster`. They wait for Azure to complete the operation. Missing outputs stop the command before Azure is called. Backing services such as PostgreSQL remain running and bill separately. Start the cluster before running Terraform against Kubernetes resources.
+Set `AKS_RESOURCE_GROUP`, `AKS_CLUSTER_NAME`, `POSTGRES_RESOURCE_GROUP` and `POSTGRES_SERVER_NAME` in your shell (or pass them as Make variables). Start/stop commands call Azure CLI directly and wait for completion. Local platform commands start PostgreSQL before AKS and stop AKS before PostgreSQL; a failed command stops the sequence. Start the platform before running Terraform against Kubernetes resources.
 
-[AKS stop/start considerations](https://learn.microsoft.com/en-us/azure/aks/start-stop-cluster): stopping releases capacity, so restart is subject to availability. After stopping, Microsoft advises waiting 15–30 minutes before starting again. Standalone pods are deleted during stop; controller-managed workloads are restored on start.
+The **Shutdown platform** GitHub workflow is manual-only and stops AKS and PostgreSQL in parallel jobs. Configure repository Actions variables for the four resource names above plus `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID`. Azure login uses OIDC federation for `main`; no saved Azure credential or Terraform state is needed. Scheduling is deferred to [#14](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/14).
+
+[AKS considerations](https://learn.microsoft.com/en-us/azure/aks/start-stop-cluster): restart depends on capacity; wait 15–30 minutes after stopping before starting. Standalone pods are deleted. [PostgreSQL restarts automatically after seven days](https://learn.microsoft.com/en-us/azure/postgresql/configure-maintain/how-to-stop-server); storage and other retained services remain billable.
 
 ### Node pools
 
@@ -184,6 +190,8 @@ POC verification checklist (results reported by the human developer):
 - [x] `make stop-cluster` completes successfully.
 - [x] Final untargeted `make plan` shows no pending changes after all stages.
 - [x] `make start-cluster`, node readiness, and `make kubecontext` after restart. Start the cluster before planning or applying Kubernetes resources.
+- [ ] Platform/database start and stop using configured resource names.
+- [ ] GitHub OIDC federation, resource-scoped shutdown RBAC including CLI operation polling, and first manual shutdown workflow. Offline checks do not prove Azure authorization or runtime behavior.
 - [ ] Workload identity authentication to Blob, Key Vault and PostgreSQL, including the manual database roles and Kubernetes workload labels.
 - [ ] First workflow execution, Argo executor token mounts/RBAC, agent pool selection/tolerations, and no Argo artifact uploads from agent steps in the POC. The executor must reach the API server under `deny-imds`; the `401` from `/healthz` in an `agents` pod suggests it can.
 - [ ] Monitoring table selection, ConfigMap filters, observed ingestion volume and cap behavior. Successful resource deployment does not prove logs are flowing or filtering correctly.
