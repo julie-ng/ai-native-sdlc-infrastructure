@@ -8,6 +8,7 @@ Rows retain decision history. The later choices below supersede the initial four
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-04 | Grant the deployer `Storage Blob Data Owner` on the `artifacts` and `argo` storage accounts | Human decision: shared keys are off, so portal blob access needs an Entra data-plane role. Account scope, not container, because the assignee is the human deployer; an exception to narrowest scope. Workload identities and agents unaffected. Needs an allowed admin IP. [Storage RBAC](https://learn.microsoft.com/en-us/azure/storage/blobs/authorize-access-azure-active-directory). |
 | 2026-10-27 | Name the managed identity `platform-stop-github-mi`; suffix role assignment labels with `_contributor` | Human naming decision: identify purpose, caller and Azure resource type; labels make the expected built-in roles explicit. Supersedes the earlier identity name. |
 | 2026-10-27 | Name the Terraform module `platform_stop_mi` | Human naming refinement: identify the managed identity module explicitly. Workflow and Azure identity names stay `platform-stop` and `platform-stop-mi`. |
 | 2026-10-27 | Name the workflow, Terraform module and identity `platform-stop` / `platform_stop` / `platform-stop-mi` | Human naming decision: match the existing cluster `stop` terminology and identify the platform as the target. |

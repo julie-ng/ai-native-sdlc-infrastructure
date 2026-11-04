@@ -49,3 +49,13 @@ resource "azurerm_storage_container" "containers" {
   storage_account_id    = azurerm_storage_account.storage[each.key].id
   container_access_type = "private"
 }
+
+# Admin can browse and manage blobs in the portal (data plane). Account scope, not container: the
+# assignee is the deployer, and account scope lets the portal list containers. Still needs an
+# allowed IP in the network rules to reach the data plane.
+resource "azurerm_role_assignment" "storage_admin" {
+  for_each             = local.storage_accounts
+  role_definition_name = "Storage Blob Data Owner"
+  scope                = azurerm_storage_account.storage[each.key].id
+  principal_id         = data.azurerm_client_config.current.object_id # Me
+}
