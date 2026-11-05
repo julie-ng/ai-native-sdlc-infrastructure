@@ -65,17 +65,17 @@ variable "foreman_secret_provider_class_name" {
   description = "SecretProviderClass name referenced by the trusted foreman workflow volume in the agents namespace."
 }
 
-variable "agent_signing_service_accounts" {
+variable "coder_service_accounts" {
   type        = set(string)
   description = "Agent ServiceAccounts annotated for the dedicated signing-key identity."
 }
 
-variable "agent_signing_client_id" {
+variable "coder_client_id" {
   type        = string
   description = "Client ID of the dedicated signing-key-only identity."
 }
 
-variable "agent_signing_secret_provider_class_name" {
+variable "coder_secret_provider_class_name" {
   type        = string
   description = "SecretProviderClass name for the read-only agent signing-key CSI mount."
 }

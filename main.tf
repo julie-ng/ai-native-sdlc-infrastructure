@@ -76,7 +76,7 @@ module "identities" {
   artifacts_storage_account_id = module.shared.storage.artifacts.id
   argo_container_id            = module.shared.storage.argo.container_id
 
-  workload_identities    = toset(keys(merge(local.workload_identities, local.agent_signing_identity)))
+  workload_identities    = toset(keys(merge(local.workload_identities, local.coder_identity)))
   key_vault_secret_names = var.key_vault_secret_names
 }
 
@@ -128,7 +128,7 @@ module "cluster" {
   kubelet_identity       = module.identities.kubelet
   workload_identity_ids  = { for k, mi in module.identities.workloads : k => mi.id }
 
-  workload_identities = merge(local.workload_identities, local.agent_signing_identity)
+  workload_identities = merge(local.workload_identities, local.coder_identity)
 }
 
 # ============
@@ -142,9 +142,9 @@ module "kubernetes" {
   workload_client_ids = { for k, mi in module.identities.workloads : k => mi.client_id }
   agent_roles         = var.agent_roles
 
-  agent_signing_service_accounts           = var.agent_signing_service_accounts
-  agent_signing_client_id                  = module.identities.workloads["agent-signing"].client_id
-  agent_signing_secret_provider_class_name = var.agent_signing_secret_provider_class_name
+  coder_service_accounts           = var.coder_service_accounts
+  coder_client_id                  = module.identities.workloads["coder"].client_id
+  coder_secret_provider_class_name = var.coder_secret_provider_class_name
 
   platform_namespace      = var.platform_namespace
   argo_namespace          = var.argo_namespace
@@ -185,10 +185,10 @@ module "platform_stop_mi" {
 
 locals {
   # Federation includes coder, but its ServiceAccount stays in the agent resource.
-  agent_signing_identity = {
-    agent-signing = {
+  coder_identity = {
+    coder = {
       namespace        = var.agents_namespace
-      service_accounts = sort(tolist(var.agent_signing_service_accounts))
+      service_accounts = sort(tolist(var.coder_service_accounts))
     }
   }
 

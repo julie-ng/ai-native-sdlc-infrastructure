@@ -52,11 +52,11 @@ variable "argo_container_id" {
 
 variable "workload_identities" {
   type        = set(string)
-  description = "Workload identity names, including the dedicated agent-signing identity (ADR-003)."
+  description = "Workload identity names, including the dedicated coder identity (ADR-003)."
 
   validation {
-    condition     = alltrue([for k in ["platform-services", "foreman", "gh-token-broker", "argo-workflow-controller", "argo-server", "agent-signing"] : contains(var.workload_identities, k)])
-    error_message = "Must include platform-services, foreman, gh-token-broker, argo-workflow-controller, argo-server and agent-signing; persistent grants reference them."
+    condition     = alltrue([for k in ["platform-services", "foreman", "gh-token-broker", "argo-workflow-controller", "argo-server", "coder"] : contains(var.workload_identities, k)])
+    error_message = "Must include platform-services, foreman, gh-token-broker, argo-workflow-controller, argo-server and coder; persistent grants reference them."
   }
 }
 

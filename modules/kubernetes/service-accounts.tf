@@ -42,8 +42,8 @@ resource "kubernetes_service_account_v1" "agents" {
   metadata {
     name      = each.value
     namespace = kubernetes_namespace_v1.ns[var.agents_namespace].metadata[0].name
-    annotations = contains(var.agent_signing_service_accounts, each.value) ? {
-      "azure.workload.identity/client-id" = var.agent_signing_client_id
+    annotations = contains(var.coder_service_accounts, each.value) ? {
+      "azure.workload.identity/client-id" = var.coder_client_id
     } : {}
   }
 

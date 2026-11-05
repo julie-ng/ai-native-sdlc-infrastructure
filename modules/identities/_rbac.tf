@@ -101,8 +101,8 @@ resource "azurerm_role_assignment" "platform_services_on_kv" {
 }
 
 # ADR-003 exception: no other cloud access for the committing agent identity.
-resource "azurerm_role_assignment" "agent_signing_on_gpg_key" {
+resource "azurerm_role_assignment" "coder_on_gpg_key" {
   role_definition_name = "Key Vault Secrets User"
   scope                = "${var.key_vault_id}/secrets/${var.key_vault_secret_names.agent_gpg_private_key}"
-  principal_id         = azurerm_user_assigned_identity.workloads["agent-signing"].principal_id
+  principal_id         = azurerm_user_assigned_identity.workloads["coder"].principal_id
 }

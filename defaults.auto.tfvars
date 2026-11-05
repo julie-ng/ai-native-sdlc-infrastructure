@@ -92,5 +92,5 @@ key_vault_secret_names = {
 foreman_secret_provider_class_name = "foreman-admin-token"
 
 # ADR-003 exception: only committing roles may read the signing key.
-agent_signing_service_accounts           = ["coder"]
-agent_signing_secret_provider_class_name = "agent-gpg-signing-key"
+coder_service_accounts           = ["coder"]
+coder_secret_provider_class_name = "coder-gpg-key"

@@ -235,17 +235,17 @@ variable "foreman_secret_provider_class_name" {
 # Agent Signing Identity
 # =====================
 
-variable "agent_signing_service_accounts" {
+variable "coder_service_accounts" {
   type        = set(string)
   description = "Agent ServiceAccounts federated to the signing-key-only identity. ADR-003 approves coder for the initial release; expanding access needs a decision."
 
   validation {
-    condition     = length(var.agent_signing_service_accounts) > 0 && alltrue([for sa in var.agent_signing_service_accounts : contains(var.agent_roles, sa)])
+    condition     = length(var.coder_service_accounts) > 0 && alltrue([for sa in var.coder_service_accounts : contains(var.agent_roles, sa)])
     error_message = "Signing ServiceAccounts must be a nonempty subset of agent_roles."
   }
 }
 
-variable "agent_signing_secret_provider_class_name" {
+variable "coder_secret_provider_class_name" {
   type        = string
   description = "SecretProviderClass name referenced by coder's read-only signing-key CSI volume in the agents namespace."
 }

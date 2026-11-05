@@ -211,7 +211,7 @@ The human developer reported a successful apply on 2026-11-05 after reviewing th
 ### Coder signing-key mount (#18)
 
 - The existing Key Vault secret `agent-gpg-private-key` contains the ASCII-armored private key for `@julieio-goose`, populated under #21. Do not rerun initialization/reset. Terraform manages references only, never the value.
-- Dedicated `agent-signing-mi` has only `Key Vault Secrets User` on that one secret. Root `agent_signing_service_accounts = ["coder"]` controls federation and annotations; coder stays in the agent ServiceAccount resource with token automount off. Planner, reviewer and open-pr receive no signing identity.
+- Dedicated `coder-mi` has only `Key Vault Secrets User` on that one secret. Root `coder_service_accounts = ["coder"]` controls federation and annotations; coder stays in the agent ServiceAccount resource with token automount off. Planner, reviewer and open-pr receive no signing identity.
 - Apply the identities, cluster and Kubernetes stages in the established order, reviewing each plan. The cluster/CSI CRD must exist before Kubernetes planning. This change adds the signing identity/grant, coder federation/annotation and SecretProviderClass; it does not require replacing existing identities.
 - In the workflows repo, run the committing pod as `coder` in `agents`, label it `azure.workload.identity/use: "true"`, and add the volume and main-container mount below. These are workflow configuration instructions; this repo does not change Argo templates. Keep the projected `token-broker` token and Argo executor token separate.
 
@@ -225,7 +225,7 @@ volumes:
       driver: secrets-store.csi.k8s.io
       readOnly: true
       volumeAttributes:
-        secretProviderClass: agent-gpg-signing-key
+        secretProviderClass: coder-gpg-key
 # Add to the existing main container's volumeMounts only:
 # - name: agent-signing-key
 #   mountPath: /mnt/agent-signing
