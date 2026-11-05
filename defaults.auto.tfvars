@@ -86,6 +86,11 @@ key_vault_secret_names = {
   platform_services_admin_token   = "platform-services-admin-token"
   platform_services_hmac_key      = "platform-services-hmac-key"
   token_broker_gh_app_private_key = "token-broker-gh-app-private-key"
+  agent_gpg_private_key           = "agent-gpg-private-key"
 }
 
 foreman_secret_provider_class_name = "foreman-admin-token"
+
+# ADR-003 exception: only committing roles may read the signing key.
+coder_service_accounts           = ["coder"]
+coder_secret_provider_class_name = "coder-gpg-key"

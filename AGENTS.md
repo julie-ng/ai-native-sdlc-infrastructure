@@ -37,7 +37,7 @@ If an ADR and this repo disagree, flag it to the human developer. Don't silently
 - **No secrets in Terraform.** Nothing that puts a credential into state: no `azurerm_key_vault_secret` values, no generated passwords, no Kubernetes token Secrets. Document them as manual steps in the README instead.
 - **No hard-coded user, tenant or subscription IDs.** The deployer comes from `data.azurerm_client_config.current`, and the subscription from `az account set`.
 - **Entra ID over keys.** Shared keys stay off on storage. Postgres is Entra-only. ACR admin user stays off.
-- **Agent pods get no cloud identity (ADR-003).** Workload identities are for platform services only. Any change that gives an agent ServiceAccount Azure access needs an explicit decision from the human developer.
+- **Agent pods get no cloud identity except the commit-signing key (ADR-003).** The approved #18 exception gives `coder` a dedicated identity with `Key Vault Secrets User` on the signing-key secret only. Any further agent cloud access needs an explicit decision from the human developer.
 - **Least privilege per identity.** Scope role assignments to the narrowest resource, e.g. a container rather than its account. Don't share an identity between components with different access needs.
 - **Nothing pushes to ACR.** Images are pushed manually. No identity in this repo, the cluster or GitHub gets push.
 - **Config is not a boundary.** Network rules, firewall rules and RBAC are mitigations. Name what they actually enforce.

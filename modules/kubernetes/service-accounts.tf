@@ -30,10 +30,11 @@ resource "kubernetes_service_account_v1" "platform" {
   }
 }
 
-# Agents - no cloud identity
+# Agents - signing-key-only identity for committing roles (ADR-003)
 # --------------------------
 # ServiceAccount = role, pod = run (ADR-003).
-# No automounted API token. Pods mount a projected token with audience `token-broker` instead.
+# No automounted API token. Broker auth uses a projected token with audience `token-broker`.
+# Committing pods also opt into the Azure workload identity projection in their manifests.
 
 resource "kubernetes_service_account_v1" "agents" {
   for_each = toset(var.agent_roles)
@@ -41,6 +42,9 @@ resource "kubernetes_service_account_v1" "agents" {
   metadata {
     name      = each.value
     namespace = kubernetes_namespace_v1.ns[var.agents_namespace].metadata[0].name
+    annotations = contains(var.coder_service_accounts, each.value) ? {
+      "azure.workload.identity/client-id" = var.coder_client_id
+    } : {}
   }
 
   automount_service_account_token = false

@@ -99,3 +99,10 @@ resource "azurerm_role_assignment" "platform_services_on_kv" {
   scope                = "${var.key_vault_id}/secrets/${each.value}"
   principal_id         = azurerm_user_assigned_identity.workloads["platform-services"].principal_id
 }
+
+# ADR-003 exception: no other cloud access for the committing agent identity.
+resource "azurerm_role_assignment" "coder_on_gpg_key" {
+  role_definition_name = "Key Vault Secrets User"
+  scope                = "${var.key_vault_id}/secrets/${var.key_vault_secret_names.agent_gpg_private_key}"
+  principal_id         = azurerm_user_assigned_identity.workloads["coder"].principal_id
+}

@@ -1,7 +1,7 @@
 # =====================
 #  Workload Identities
 # =====================
-# Platform services only (ADR-003). One managed identity per service,
+# Platform services plus the signing-key-only agent exception (ADR-003).
 # one federated credential per Kubernetes ServiceAccount it runs as.
 
 locals {

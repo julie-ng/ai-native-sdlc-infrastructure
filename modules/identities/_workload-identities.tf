@@ -1,7 +1,7 @@
 # =====================
 #  Workload Identities
 # =====================
-# Platform services only; agent ServiceAccounts get no cloud identity (ADR-003).
+# Platform services plus the dedicated signing-key-only agent exception (ADR-003).
 
 resource "azurerm_user_assigned_identity" "workloads" {
   for_each            = var.workload_identities
