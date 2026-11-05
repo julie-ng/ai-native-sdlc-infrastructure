@@ -166,7 +166,11 @@ Kept out of Terraform so secrets never land in state, or because no azurerm reso
 
 - **Postgres roles for workload identities.** `workflow-service`, `argo-workflow-controller` and `argo-server` connect via Entra ID, but need database roles. As the Entra admin, create a role per managed identity (`pgaadauth_create_principal`) and grant it its database. **Unverified:** exact function arguments for managed identities.
 - **Local-dev service principal credential.** `{name}-local-dev` has no secret in Terraform. Run `make local-dev-credential` (`az ad app credential reset --append --years 1`), copy the secret from the terminal into a password manager or git-ignored file, and keep it out of the repo.
-- **Key Vault secrets.** GitHub App private key for the token broker ([ADR-012](https://github.com/julie-ng/ai-native-sdlc/blob/main/architecture/decisions/012-cloud-agent-identity.md)).
+- **Key Vault secrets.** After the shared module apply, run `make seed-key-vault-secrets` with your Azure CLI login and an allowed admin IP. It reads the vault name from the saved `summary.shared.key_vault.name` output; if that output is not saved yet, use `KEY_VAULT_NAME=<vault-name> make seed-key-vault-secrets`.
+  - Creates `platform-services-admin-token`, `platform-services-hmac-key`, `gh-token-broker-app-private-key` and `agent-gpg-private-key` with the literal placeholder `BOOTSTRAP-REPLACE-ME`.
+  - In Azure Portal → Key Vault → Secrets, open each secret and create a new version with the real value before using it. The placeholder is not a generated credential or key.
+  - Lists secret names only, skips existing secrets, and suppresses the set response. Listing or creation errors stop the command; rerun after fixing the error. Run one seed command at a time, before editing values in the Portal: the list/create sequence is not atomic.
+  - Values are never managed or read by Terraform, so they do not enter Terraform state. This target adds no workload role assignments; access grants remain separate work.
 
 ## Network
 
@@ -198,6 +202,7 @@ POC verification checklist (results reported by the human developer):
 - [x] Platform/database start and stop using configured resource names.
 - [x] New `platform_stop_mi` module: identities-group lookup, identity/federation creation, built-in role assignments and first manual stop workflow. 
 - [x] `local-dev` service principal: Entra app registration created by the applying identity, credential created with `make local-dev-credential`, and user delegation SAS URLs generated with it against the `artifacts` account.
+- [ ] Key Vault seed command against Azure: creates missing placeholders, preserves Portal-created versions on rerun, and fails cleanly if firewall/RBAC denies access. Verified offline with mocked CLI calls only.
 - [ ] Workload identity authentication to Blob, Key Vault and PostgreSQL, including the manual database roles and Kubernetes workload labels.
 - [ ] First workflow execution, Argo executor token mounts/RBAC, agent pool selection/tolerations, and no Argo artifact uploads from agent steps in the POC. The executor must reach the API server under `deny-imds`; the `401` from `/healthz` in an `agents` pod suggests it can.
 - [ ] Monitoring table selection, ConfigMap filters, observed ingestion volume and cap behavior. Successful resource deployment does not prove logs are flowing or filtering correctly.
