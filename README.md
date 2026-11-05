@@ -65,7 +65,7 @@ make plan            # expect: no changes
 
 Cluster commands use the separate `cluster` root output, which depends only on `module.cluster`. The combined `summary` output may not be saved until the Kubernetes stage is applied. After adding the `cluster` output to an already deployed cluster, rerun `make plan-cluster`, review the plan, and run `make apply` to save it before `make kubecontext`.
 
-Managed identity names have no random suffix. Identities and their role assignments on shared resources survive cluster rebuilds. Cluster recreation updates workload federation to its OIDC issuer. The identity resource group, control-plane and kubelet identities have `prevent_destroy` guards. The shared workload-identity guard is temporarily removed for the #19 replacements; restore it after applying (below).
+Managed identity names have no random suffix. Identities and their role assignments on shared resources survive cluster rebuilds. Cluster recreation updates workload federation to its OIDC issuer. The identity resource group, control-plane, kubelet and workload identities have `prevent_destroy` guards.
 
 > [!IMPORTANT]
 > Before applying this module split, discard any earlier saved plan and generate a fresh one. `moved.tf` preserves Terraform addresses, but existing identities in the cluster resource group would still require replacement to use the new group; `prevent_destroy` blocks that replacement. If identities have already been deployed, review a separate migration before applying.
@@ -194,11 +194,9 @@ Kept out of Terraform so secrets never land in state, or because no azurerm reso
   - Initialization lists secret names only, skips existing secrets, and suppresses the set response. Listing or creation errors stop the command; rerun after fixing the error. Run one initialization command at a time, before replacing values: the list/create sequence is not atomic.
   - Values are never managed or read by Terraform, so they do not enter Terraform state. These targets add no workload role assignments; access grants remain separate work.
 
-### Apply the identity replacements (#19)
+### Identity replacements (#19)
 
-- Platform-services and the broker are not deployed, Argo is not installed, and no PostgreSQL roles exist, as confirmed in the [review](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/19#issuecomment-6660973361). There are no active consumers to migrate.
-- The workload-identity `prevent_destroy` block is removed in this change. Run `make plan-identities` and review deletion of `workflow-service-mi`, `artifact-service-mi` and `token-broker-mi`, replaced by `platform-services-mi`, `gh-token-broker-mi` and the new `foreman-mi`. Argo identities must remain. Run `make apply`, then review/apply the cluster and Kubernetes stages in the usual order. No preliminary apply just to remove the guard is needed.
-- After the identity changes are applied, restore `lifecycle { prevent_destroy = true }` on `azurerm_user_assigned_identity.workloads` in `modules/identities/_workload-identities.tf` in a follow-up commit. Protection is temporarily absent for all workload identities because they share this definition; other guards are unchanged.
+The human developer reported a successful apply on 2026-11-05 after reviewing the plan. The change replaces `workflow-service-mi` and `artifact-service-mi` with `platform-services-mi`, replaces `token-broker-mi` with `gh-token-broker-mi`, and adds `foreman-mi`. The shared workload-identity `prevent_destroy` block is restored following that apply. Runtime access checks remain in **Unverified** below.
 
 ### Trusted foreman step (#19)
 

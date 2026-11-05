@@ -10,6 +10,7 @@ resource "azurerm_user_assigned_identity" "workloads" {
   location            = azurerm_resource_group.identities_rg.location
   tags                = var.tags
 
-  # Temporarily allow replacement of the unused identities in #19.
-  # Restore prevent_destroy after the human applies the identity changes.
+  lifecycle {
+    prevent_destroy = true
+  }
 }
