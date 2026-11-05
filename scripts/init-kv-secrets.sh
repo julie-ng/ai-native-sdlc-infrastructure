@@ -3,12 +3,15 @@ set -eu
 
 # Bootstrap configuration: edit names here; replace real values in Azure Portal.
 secret_names=(
-  platform-services-admin-token
-  platform-services-hmac-key
-  gh-token-broker-app-private-key
-  agent-gpg-private-key
+  platform-services-admin-token    # random value now
+  platform-services-hmac-key       # random value now
+  token-broker-gh-app-private-key  # placeholder, tagged
+  agent-gpg-private-key            # placeholder, tagged → GPG script
+  agent-gpg-public-key             # placeholder, tagged → GPG script
+  agent-gpg-fingerprint            # placeholder, tagged → GPG script
 )
-bootstrap_value='BOOTSTRAP-REPLACE-ME'
+
+bootstrap_value='INIT-ONLY-CHANGE-ME'
 
 vault_name="${KEY_VAULT_NAME:-}"
 if [ -z "$vault_name" ]; then

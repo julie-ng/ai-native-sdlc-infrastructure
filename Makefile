@@ -92,6 +92,6 @@ local-dev-credential:
 	client_id="$$(terraform output -json local_dev | jq -er '.client_id')"; \
 	az ad app credential reset --id "$$client_id" --append --years 1 --display-name local-dev
 
-.PHONY: seed-key-vault-secrets
-seed-key-vault-secrets:
-	@bash scripts/seed-key-vault-secrets.sh
+.PHONY: init-kv-secrets
+init-kv-secrets:
+	@bash scripts/init-kv-secrets.sh
