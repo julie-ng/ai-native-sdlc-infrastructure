@@ -165,6 +165,7 @@ Kept out of Terraform so secrets never land in state, or because no azurerm reso
   ```
 
 - **Postgres roles for workload identities.** `workflow-service`, `argo-workflow-controller` and `argo-server` connect via Entra ID, but need database roles. As the Entra admin, create a role per managed identity (`pgaadauth_create_principal`) and grant it its database. **Unverified:** exact function arguments for managed identities.
+- **Local-dev service principal credential.** `{name}-local-dev` has no secret in Terraform. Create one yourself (`az ad app credential reset --id <client_id>`, short expiry) and keep it out of the repo. **Unverified:** the applying identity needs permission to create app registrations in Entra.
 - **Key Vault secrets.** GitHub App private key for the token broker ([ADR-012](https://github.com/julie-ng/ai-native-sdlc/blob/main/architecture/decisions/012-cloud-agent-identity.md)).
 
 ## Network

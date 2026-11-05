@@ -59,3 +59,42 @@ resource "azurerm_role_assignment" "storage_admin" {
   scope                = azurerm_storage_account.storage[each.key].id
   principal_id         = data.azurerm_client_config.current.object_id # Me
 }
+
+# ======================
+#  Local Development SP
+# ======================
+# For running the artifact service on a laptop against real storage. No client secret or
+# certificate here: credentials would land in state. Create one manually (see README).
+# Only the container is writable; the delegator role at account scope is what lets the
+# service sign user delegation SAS URLs, and it grants no blob access by itself.
+
+resource "azuread_application" "local_dev" {
+  display_name = "${var.name}-local-dev"
+  owners       = [data.azurerm_client_config.current.object_id]
+}
+
+resource "azuread_service_principal" "local_dev" {
+  client_id = azuread_application.local_dev.client_id
+  owners    = [data.azurerm_client_config.current.object_id]
+}
+
+# Not part of local.storage_accounts: only the artifacts account gets this container.
+resource "azurerm_storage_container" "local_dev" {
+  name                  = "local-dev"
+  storage_account_id    = azurerm_storage_account.storage["artifacts"].id
+  container_access_type = "private"
+}
+
+resource "azurerm_role_assignment" "local_dev_blob_contributor" {
+  role_definition_name = "Storage Blob Data Contributor"
+  scope                = azurerm_storage_container.local_dev.id
+  principal_id         = azuread_service_principal.local_dev.object_id
+  principal_type       = "ServicePrincipal"
+}
+
+resource "azurerm_role_assignment" "local_dev_blob_delegator" {
+  role_definition_name = "Storage Blob Delegator"
+  scope                = azurerm_storage_account.storage["artifacts"].id
+  principal_id         = azuread_service_principal.local_dev.object_id
+  principal_type       = "ServicePrincipal"
+}
