@@ -80,3 +80,12 @@ platform_stop = {
   aks_role      = "Azure Kubernetes Service Contributor Role"
   postgres_role = "Contributor"
 }
+
+# Names only: Terraform never reads the existing values.
+key_vault_secret_names = {
+  platform_services_admin_token   = "platform-services-admin-token"
+  platform_services_hmac_key      = "platform-services-hmac-key"
+  token_broker_gh_app_private_key = "token-broker-gh-app-private-key"
+}
+
+foreman_secret_provider_class_name = "foreman-admin-token"

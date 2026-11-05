@@ -41,22 +41,22 @@ resource "azurerm_role_assignment" "kubelet_acr_pull" {
 # ===================
 # Workload Identities
 # ===================
-# Postgres access (workflow-service, argo) is not Azure RBAC - database roles via SQL, see README.
+# Postgres access (platform-services, argo) is not Azure RBAC - database roles via SQL, see README.
 
-# Artifact service - read/write blobs in the artifacts container only
-resource "azurerm_role_assignment" "artifact_service_on_blob" {
+# Platform services - read/write blobs in the artifacts container only
+resource "azurerm_role_assignment" "platform_service_contributor_on_artifacts" {
   role_definition_name = "Storage Blob Data Contributor"
   scope                = var.artifacts_container_id
-  principal_id         = azurerm_user_assigned_identity.workloads["artifact-service"].principal_id
+  principal_id         = azurerm_user_assigned_identity.workloads["platform-services"].principal_id
 }
 
-# Artifact service - sign user delegation SAS URLs handed to agents.
+# Platform services - sign user delegation SAS URLs handed to agents.
 # Delegation key is requested at account level; the SAS can never exceed the
 # container-scoped Data Contributor grant above.
-resource "azurerm_role_assignment" "artifact_service_delegator" {
+resource "azurerm_role_assignment" "platform_services_delegator_on_artifacts" {
   role_definition_name = "Storage Blob Delegator"
   scope                = var.artifacts_storage_account_id
-  principal_id         = azurerm_user_assigned_identity.workloads["artifact-service"].principal_id
+  principal_id         = azurerm_user_assigned_identity.workloads["platform-services"].principal_id
 }
 
 # Argo artifact repository. Workflow step pods (Argo executor) are NOT granted access -
@@ -79,6 +79,23 @@ resource "azurerm_role_assignment" "argo_server_on_blob" {
 # Token broker - read the GitHub App private key
 resource "azurerm_role_assignment" "token_broker_on_kv" {
   role_definition_name = "Key Vault Secrets User"
-  scope                = var.key_vault_id
-  principal_id         = azurerm_user_assigned_identity.workloads["token-broker"].principal_id
+  scope                = "${var.key_vault_id}/secrets/${var.key_vault_secret_names.token_broker_gh_app_private_key}"
+  principal_id         = azurerm_user_assigned_identity.workloads["gh-token-broker"].principal_id
+}
+
+# The trusted workflow bootstrap gets only the admin token, not the HMAC signing key.
+resource "azurerm_role_assignment" "foreman_on_admin_token" {
+  role_definition_name = "Key Vault Secrets User"
+  scope                = "${var.key_vault_id}/secrets/${var.key_vault_secret_names.platform_services_admin_token}"
+  principal_id         = azurerm_user_assigned_identity.workloads["foreman"].principal_id
+}
+
+resource "azurerm_role_assignment" "platform_services_on_kv" {
+  for_each = {
+    admin_token = var.key_vault_secret_names.platform_services_admin_token
+    hmac_key    = var.key_vault_secret_names.platform_services_hmac_key
+  }
+  role_definition_name = "Key Vault Secrets User"
+  scope                = "${var.key_vault_id}/secrets/${each.value}"
+  principal_id         = azurerm_user_assigned_identity.workloads["platform-services"].principal_id
 }

@@ -55,7 +55,16 @@ variable "workload_identities" {
   description = "Names of platform services requiring separate managed identities."
 
   validation {
-    condition     = alltrue([for k in ["artifact-service", "token-broker", "argo-workflow-controller", "argo-server"] : contains(var.workload_identities, k)])
-    error_message = "Must include artifact-service, token-broker, argo-workflow-controller and argo-server; persistent grants reference them."
+    condition     = alltrue([for k in ["platform-services", "foreman", "gh-token-broker", "argo-workflow-controller", "argo-server"] : contains(var.workload_identities, k)])
+    error_message = "Must include platform-services, foreman, gh-token-broker, argo-workflow-controller and argo-server; persistent grants reference them."
   }
+}
+
+variable "key_vault_secret_names" {
+  type = object({
+    platform_services_admin_token   = string
+    platform_services_hmac_key      = string
+    token_broker_gh_app_private_key = string
+  })
+  description = "Existing Key Vault secret names for secret-scoped grants and CSI mounts. Values are populated outside Terraform."
 }

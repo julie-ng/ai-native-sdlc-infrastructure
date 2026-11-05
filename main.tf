@@ -76,7 +76,8 @@ module "identities" {
   artifacts_storage_account_id = module.shared.storage.artifacts.id
   argo_container_id            = module.shared.storage.argo.container_id
 
-  workload_identities = toset(keys(local.workload_identities))
+  workload_identities    = toset(keys(local.workload_identities))
+  key_vault_secret_names = var.key_vault_secret_names
 }
 
 # =============
@@ -147,6 +148,11 @@ module "kubernetes" {
   agents_namespace        = var.agents_namespace
   azure_imds_endpoint     = var.azure_imds_endpoint
 
+  foreman_secret_provider_class_name = var.foreman_secret_provider_class_name
+  key_vault_name                     = module.shared.key_vault.name
+  key_vault_tenant_id                = module.shared.key_vault.tenant_id
+  key_vault_secret_names             = var.key_vault_secret_names
+
   # Provider config depends on the cluster, which is not a dependency Terraform sees.
   depends_on = [module.cluster]
 }
@@ -175,15 +181,15 @@ module "platform_stop_mi" {
 
 locals {
   workload_identities = {
-    workflow-service = {
+    platform-services = {
       namespace        = var.platform_namespace
-      service_accounts = ["workflow-service"]
+      service_accounts = ["platform-services"]
     }
-    artifact-service = {
-      namespace        = var.platform_namespace
-      service_accounts = ["artifact-service"]
+    foreman = {
+      namespace        = var.agents_namespace
+      service_accounts = ["foreman"]
     }
-    token-broker = {
+    gh-token-broker = {
       namespace        = var.github_broker_namespace
       service_accounts = ["token-broker"]
     }
