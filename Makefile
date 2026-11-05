@@ -82,3 +82,12 @@ kubecontext:
 	az aks get-credentials --resource-group "$$cluster_rg" --name "$$cluster_name"
 	kubelogin convert-kubeconfig -l azurecli
 	kubectl get nodes
+
+# Creates a client secret for the local-dev service principal (never stored in Terraform).
+# Printed once to the terminal: copy it into a git-ignored file or a password manager.
+# --append keeps any existing credentials instead of replacing them.
+.PHONY: local-dev-credential
+local-dev-credential:
+	@set -eu; \
+	client_id="$$(terraform output -json local_dev | jq -er '.client_id')"; \
+	az ad app credential reset --id "$$client_id" --append --years 1 --display-name local-dev
