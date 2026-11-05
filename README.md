@@ -88,7 +88,7 @@ make stop-cluster     # AKS only (existing command)
 make start-cluster
 ```
 
-Set `AKS_RESOURCE_GROUP`, `AKS_CLUSTER_NAME`, `POSTGRES_RESOURCE_GROUP` and `POSTGRES_SERVER_NAME` in your shell (or pass them as Make variables). Start/stop commands call Azure CLI directly and wait for completion. Local platform commands start PostgreSQL before AKS and stop AKS before PostgreSQL; a failed command stops the sequence. Start the platform before running Terraform against Kubernetes resources.
+`AKS_RESOURCE_GROUP`, `AKS_CLUSTER_NAME`, `POSTGRES_RESOURCE_GROUP` and `POSTGRES_SERVER_NAME` default to the local `platform_stop` Terraform output; override them in your shell or as Make variables. The commands fail before calling Azure if a value is empty. Start/stop commands call Azure CLI directly and wait for completion. Local platform commands start PostgreSQL before AKS and stop AKS before PostgreSQL; a failed command stops the sequence. Start the platform before running Terraform against Kubernetes resources.
 
 The **Platform stop** GitHub workflow is manual-only and stops AKS and PostgreSQL in parallel jobs. After the cluster exists, run `make init`, then review `make plan-platform-stop` and run `make apply`. The deployer needs permission to create managed identities/federation in the identities group and assign roles on both target resources. The module uses AzureRM, with no new provider or credentials.
 

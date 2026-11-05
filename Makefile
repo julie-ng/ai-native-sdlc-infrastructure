@@ -46,11 +46,27 @@ cluster_rg="$$(printf '%s\n' "$$cluster_output" | jq -er '.resource_group.name |
 cluster_name="$$(printf '%s\n' "$$cluster_output" | jq -er '.aks_cluster.name | select(type == "string" and length > 0)')"
 endef
 
+# Defaults come from the local `platform_stop` Terraform output (identifiers only). Override with
+# env vars or Make variables. Empty values must fail here: az turns an empty resource group into a
+# malformed ARM URL and reports a misleading "invalid api-version" error.
+tf_platform = $(shell terraform output -json platform_stop 2>/dev/null | jq -r '.$(1) // empty' 2>/dev/null)
+AKS_RESOURCE_GROUP      ?= $(call tf_platform,AKS_RESOURCE_GROUP)
+AKS_CLUSTER_NAME        ?= $(call tf_platform,AKS_CLUSTER_NAME)
+POSTGRES_RESOURCE_GROUP ?= $(call tf_platform,AZ_POSTGRES_RESOURCE_GROUP)
+POSTGRES_SERVER_NAME    ?= $(call tf_platform,AZ_POSTGRES_SERVER_NAME)
+
+# Usage: $(call require,NAME,VALUE)
+require = @[ -n "$(2)" ] || { echo "error: $(1) is empty; apply the platform_stop module or set it" >&2; exit 1; }
+
 .PHONY: start-cluster stop-cluster start-database stop-database start-platform stop-platform kubecontext
 start-cluster stop-cluster:
+	$(call require,AKS_RESOURCE_GROUP,$(AKS_RESOURCE_GROUP))
+	$(call require,AKS_CLUSTER_NAME,$(AKS_CLUSTER_NAME))
 	az aks $(patsubst %-cluster,%,$@) --resource-group "$(AKS_RESOURCE_GROUP)" --name "$(AKS_CLUSTER_NAME)"
 
 start-database stop-database:
+	$(call require,POSTGRES_RESOURCE_GROUP,$(POSTGRES_RESOURCE_GROUP))
+	$(call require,POSTGRES_SERVER_NAME,$(POSTGRES_SERVER_NAME))
 	az postgres flexible-server $(patsubst %-database,%,$@) --resource-group "$(POSTGRES_RESOURCE_GROUP)" --name "$(POSTGRES_SERVER_NAME)"
 
 start-platform:
