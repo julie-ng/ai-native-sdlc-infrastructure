@@ -99,3 +99,30 @@ init-kv-secrets:
 .PHONY: reset-sdlc-secrets
 reset-sdlc-secrets:
 	@bash scripts/reset-sdlc-secrets.sh
+
+# Chart 2.0.16 runs Argo v4.1.6, matching the local CLI.
+ARGO_CHART_VERSION := 2.0.16
+ARGO_VERSION := v4.1.6
+# Must match argo_namespace in defaults.auto.tfvars; Terraform creates the namespace.
+ARGO_NAMESPACE ?= argo
+# Must match agents_namespace in defaults.auto.tfvars; Terraform creates the namespace.
+AGENTS_NAMESPACE ?= agents
+
+.PHONY: install-argo uninstall-argo
+install-argo:
+	kubectl apply --server-side -k "https://github.com/argoproj/argo-workflows/manifests/base/crds/full?ref=$(ARGO_VERSION)"
+	helm upgrade --install argo-workflows argo-workflows \
+		--repo https://argoproj.github.io/argo-helm \
+		--version $(ARGO_CHART_VERSION) \
+		--namespace $(ARGO_NAMESPACE) \
+		--values helm/argo-workflows/values.yaml \
+		--wait \
+		--timeout 5m
+
+# CRDs, workflow objects and Terraform-owned resources are retained.
+uninstall-argo:
+	helm uninstall argo-workflows --namespace $(ARGO_NAMESPACE) --wait
+
+.PHONY: create-argo-executor-token
+create-argo-executor-token:
+	kubectl apply --namespace $(AGENTS_NAMESPACE) --filename manifests/argo-executor-token.yaml

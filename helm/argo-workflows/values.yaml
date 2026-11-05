@@ -1,0 +1,56 @@
+# Terraform owns namespaces, ServiceAccounts and RBAC.
+# Full CRDs are applied separately by make install-argo, without a hook ServiceAccount.
+crds:
+  install: false
+createAggregateRoles: false
+
+workflow:
+  serviceAccount:
+    create: false
+    createSecret: false
+  rbac:
+    create: false
+
+controller:
+  serviceAccount:
+    create: false
+    name: argo-workflow-controller
+  rbac:
+    create: false
+  # workflowNamespaces alone does not restrict the controller's watch scope.
+  extraArgs:
+    - --namespaced
+    - --managed-namespace=agents
+  workflowNamespaces:
+    - agents
+  clusterWorkflowTemplates:
+    enabled: false
+  nodeSelector:
+    kubernetes.azure.com/agentpool: platform
+  # Archive/offloading and artifact uploads are not used in this initial release.
+  persistence: {}
+  workflowDefaults:
+    spec:
+      automountServiceAccountToken: false
+      executor:
+        serviceAccountName: argo-executor
+      nodeSelector:
+        kubernetes.azure.com/agentpool: agents
+      tolerations:
+        - key: workload
+          operator: Equal
+          value: agents
+          effect: NoSchedule
+
+server:
+  enabled: false
+  serviceAccount:
+    create: false
+    name: argo-server
+  rbac:
+    create: false
+  clusterWorkflowTemplates:
+    enabled: false
+
+artifactRepository:
+  archiveLogs: false

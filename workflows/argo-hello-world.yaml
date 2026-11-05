@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: hello-world-
+  namespace: agents
+spec:
+  entrypoint: hello
+  serviceAccountName: planner
+  # Executor identity and agents-pool scheduling come from the controller defaults.
+  templates:
+    - name: hello
+      container:
+        image: alpine:3.22.2
+        command: [sh, -c]
+        args: ["echo 'Hello from the agents pool'"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+          runAsNonRoot: true
+          runAsUser: 1000
+          seccompProfile:
+            type: RuntimeDefault
