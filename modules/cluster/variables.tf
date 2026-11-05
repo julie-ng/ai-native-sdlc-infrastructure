@@ -126,7 +126,7 @@ variable "workload_identities" {
     namespace        = string
     service_accounts = list(string)
   }))
-  description = "ServiceAccounts trusted by each platform workload identity."
+  description = "ServiceAccounts trusted by each workload identity, including the agent signing-key exception."
 }
 
 # From identities module

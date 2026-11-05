@@ -52,11 +52,11 @@ variable "argo_container_id" {
 
 variable "workload_identities" {
   type        = set(string)
-  description = "Names of platform services requiring separate managed identities."
+  description = "Workload identity names, including the dedicated agent-signing identity (ADR-003)."
 
   validation {
-    condition     = alltrue([for k in ["platform-services", "foreman", "gh-token-broker", "argo-workflow-controller", "argo-server"] : contains(var.workload_identities, k)])
-    error_message = "Must include platform-services, foreman, gh-token-broker, argo-workflow-controller and argo-server; persistent grants reference them."
+    condition     = alltrue([for k in ["platform-services", "foreman", "gh-token-broker", "argo-workflow-controller", "argo-server", "agent-signing"] : contains(var.workload_identities, k)])
+    error_message = "Must include platform-services, foreman, gh-token-broker, argo-workflow-controller, argo-server and agent-signing; persistent grants reference them."
   }
 }
 
@@ -65,6 +65,7 @@ variable "key_vault_secret_names" {
     platform_services_admin_token   = string
     platform_services_hmac_key      = string
     token_broker_gh_app_private_key = string
+    agent_gpg_private_key           = string
   })
   description = "Existing Key Vault secret names for secret-scoped grants and CSI mounts. Values are populated outside Terraform."
 }

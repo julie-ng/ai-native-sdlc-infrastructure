@@ -76,7 +76,7 @@ module "identities" {
   artifacts_storage_account_id = module.shared.storage.artifacts.id
   argo_container_id            = module.shared.storage.argo.container_id
 
-  workload_identities    = toset(keys(local.workload_identities))
+  workload_identities    = toset(keys(merge(local.workload_identities, local.agent_signing_identity)))
   key_vault_secret_names = var.key_vault_secret_names
 }
 
@@ -128,7 +128,7 @@ module "cluster" {
   kubelet_identity       = module.identities.kubelet
   workload_identity_ids  = { for k, mi in module.identities.workloads : k => mi.id }
 
-  workload_identities = local.workload_identities
+  workload_identities = merge(local.workload_identities, local.agent_signing_identity)
 }
 
 # ============
@@ -141,6 +141,10 @@ module "kubernetes" {
   workload_identities = local.workload_identities
   workload_client_ids = { for k, mi in module.identities.workloads : k => mi.client_id }
   agent_roles         = var.agent_roles
+
+  agent_signing_service_accounts           = var.agent_signing_service_accounts
+  agent_signing_client_id                  = module.identities.workloads["agent-signing"].client_id
+  agent_signing_secret_provider_class_name = var.agent_signing_secret_provider_class_name
 
   platform_namespace      = var.platform_namespace
   argo_namespace          = var.argo_namespace
@@ -174,12 +178,20 @@ module "platform_stop_mi" {
 # =====================
 #  Workload Identities
 # =====================
-# Platform services only. Agent pods get no cloud identity (ADR-003).
+# Platform services; the signing-key-only exception is kept separate below (ADR-003).
 # Each key becomes one managed identity with one federated credential per service account.
 # Service accounts are created by the kubernetes module; Helm charts reference them by name.
 # `namespace` also sets the federated credential subject (cluster module).
 
 locals {
+  # Federation includes coder, but its ServiceAccount stays in the agent resource.
+  agent_signing_identity = {
+    agent-signing = {
+      namespace        = var.agents_namespace
+      service_accounts = sort(tolist(var.agent_signing_service_accounts))
+    }
+  }
+
   workload_identities = {
     platform-services = {
       namespace        = var.platform_namespace

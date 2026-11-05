@@ -221,6 +221,7 @@ variable "key_vault_secret_names" {
     platform_services_admin_token   = string
     platform_services_hmac_key      = string
     token_broker_gh_app_private_key = string
+    agent_gpg_private_key           = string
   })
   description = "Existing Key Vault secret names for secret-scoped grants and CSI mounts. Values are populated outside Terraform."
 }
@@ -228,4 +229,23 @@ variable "key_vault_secret_names" {
 variable "foreman_secret_provider_class_name" {
   type        = string
   description = "SecretProviderClass name referenced by the trusted foreman workflow volume in the agents namespace."
+}
+
+# =====================
+# Agent Signing Identity
+# =====================
+
+variable "agent_signing_service_accounts" {
+  type        = set(string)
+  description = "Agent ServiceAccounts federated to the signing-key-only identity. ADR-003 approves coder for the initial release; expanding access needs a decision."
+
+  validation {
+    condition     = length(var.agent_signing_service_accounts) > 0 && alltrue([for sa in var.agent_signing_service_accounts : contains(var.agent_roles, sa)])
+    error_message = "Signing ServiceAccounts must be a nonempty subset of agent_roles."
+  }
+}
+
+variable "agent_signing_secret_provider_class_name" {
+  type        = string
+  description = "SecretProviderClass name referenced by coder's read-only signing-key CSI volume in the agents namespace."
 }
