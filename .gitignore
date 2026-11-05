@@ -18,3 +18,6 @@ override.tf.json
 
 .devcontainer/devcontainer.json
 tmp/
+
+# GPG name and email
+scripts/.env

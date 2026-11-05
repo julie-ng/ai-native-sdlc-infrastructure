@@ -91,3 +91,11 @@ local-dev-credential:
 	@set -eu; \
 	client_id="$$(terraform output -json local_dev | jq -er '.client_id')"; \
 	az ad app credential reset --id "$$client_id" --append --years 1 --display-name local-dev
+
+.PHONY: init-kv-secrets
+init-kv-secrets:
+	@bash scripts/init-kv-secrets.sh
+
+.PHONY: reset-sdlc-secrets
+reset-sdlc-secrets:
+	@bash scripts/reset-sdlc-secrets.sh
