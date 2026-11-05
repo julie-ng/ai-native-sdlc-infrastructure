@@ -55,8 +55,8 @@ variable "workload_identities" {
   description = "Names of platform services requiring separate managed identities."
 
   validation {
-    condition     = alltrue([for k in ["platform-services", "create-run", "gh-token-broker", "argo-workflow-controller", "argo-server"] : contains(var.workload_identities, k)])
-    error_message = "Must include platform-services, create-run, gh-token-broker, argo-workflow-controller and argo-server; persistent grants reference them."
+    condition     = alltrue([for k in ["platform-services", "foreman", "gh-token-broker", "argo-workflow-controller", "argo-server"] : contains(var.workload_identities, k)])
+    error_message = "Must include platform-services, foreman, gh-token-broker, argo-workflow-controller and argo-server; persistent grants reference them."
   }
 }
 

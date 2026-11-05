@@ -225,7 +225,7 @@ variable "key_vault_secret_names" {
   description = "Existing Key Vault secret names for secret-scoped grants and CSI mounts. Values are populated outside Terraform."
 }
 
-variable "create_run_secret_provider_class_name" {
+variable "foreman_secret_provider_class_name" {
   type        = string
-  description = "SecretProviderClass name referenced by the trusted create-run workflow volume in the agents namespace."
+  description = "SecretProviderClass name referenced by the trusted foreman workflow volume in the agents namespace."
 }

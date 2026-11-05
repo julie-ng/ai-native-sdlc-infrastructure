@@ -59,7 +59,7 @@ variable "key_vault_tenant_id" {
   description = "Tenant owning the vault, from the shared module."
 }
 
-variable "create_run_secret_provider_class_name" {
+variable "foreman_secret_provider_class_name" {
   type        = string
-  description = "SecretProviderClass name referenced by the trusted create-run workflow volume in the agents namespace."
+  description = "SecretProviderClass name referenced by the trusted foreman workflow volume in the agents namespace."
 }

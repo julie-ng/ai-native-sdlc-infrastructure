@@ -88,4 +88,4 @@ key_vault_secret_names = {
   token_broker_gh_app_private_key = "token-broker-gh-app-private-key"
 }
 
-create_run_secret_provider_class_name = "create-run-admin-token"
+foreman_secret_provider_class_name = "foreman-admin-token"

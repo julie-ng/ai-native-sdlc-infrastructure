@@ -15,7 +15,7 @@ Apply one at a time, in this order. Each depends on the outputs of the ones befo
 | 2 | [`shared`](./modules/shared/) | `ai-sdlc-shared-rg` | PostgreSQL Flexible Server (`workflow`, `argo` DBs), Blob Storage: `ai-sdlc{suffix}artifacts` (artifact service), `ai-sdlc{suffix}argo` (Argo artifact repository), Key Vault, ACR (pull only), Log Analytics (North Europe) |
 | 3 | [`identities`](./modules/identities/) | `ai-sdlc-identities-rg` | Persistent control-plane, kubelet and platform workload identities; role assignments for networking, ACR, Storage and Key Vault |
 | 4 | [`cluster`](./modules/cluster/) | `ai-sdlc-cluster-rg` | AKS (`system`, `platform` and `agents` pools, Cilium data plane and network policy, Key Vault CSI driver), cluster-specific workload federation, Container Insights, cluster-admin role assignment |
-| 5 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents` (Pod Security `baseline` on `agents`); ServiceAccounts; `argo-executor` ServiceAccount + Role; IMDS-blocking NetworkPolicy on `agents`; trusted `create-run` Secret-create RBAC and admin-token CSI configuration; monitor agent ConfigMap |
+| 5 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents` (Pod Security `baseline` on `agents`); ServiceAccounts; `argo-executor` ServiceAccount + Role; IMDS-blocking NetworkPolicy on `agents`; trusted `foreman` Secret-create RBAC and admin-token CSI configuration; monitor agent ConfigMap |
 | 6 | [`platform_stop_mi`](./modules/platform_stop_mi/) | Existing `ai-sdlc-identities-rg` (data lookup) | GitHub OIDC managed identity, federation for `main`, AKS Contributor on the cluster and Contributor on the PostgreSQL server |
 
 Resource group names carry no random suffix. AKS creates its Azure-managed node resources in `ai-sdlc-aks-managed-rg`. Globally unique names (Key Vault, Storage, ACR, Postgres) and the cluster carry a random 4-character suffix, kept in state.
@@ -137,7 +137,7 @@ The four namespaces separate platform services, Argo, the GitHub broker and agen
 | `platform` | Platform-services app (workflow and artifact APIs), using ServiceAccount `platform-services` and managed identity `platform-services-mi`. |
 | `argo` | Argo Workflows controller and server, with their workload-identity ServiceAccounts. |
 | `github-broker` | GitHub token broker, with its workload-identity ServiceAccount (`token-broker`). |
-| `agents` | Agent workflow pods; ServiceAccounts for `planner`, `coder`, `reviewer` and `open-pr`; `argo-executor` ServiceAccount and RBAC; trusted `create-run` ServiceAccount with its own workload identity and Secret-create RBAC. Agent-role ServiceAccounts have no cloud identity. |
+| `agents` | Agent workflow pods; ServiceAccounts for `planner`, `coder`, `reviewer` and `open-pr`; `argo-executor` ServiceAccount and RBAC; trusted `foreman` ServiceAccount with its own workload identity and Secret-create RBAC. Agent-role ServiceAccounts have no cloud identity. |
 
 Agent pods run LLM-driven code, so `agents` has two extra controls:
 
@@ -197,14 +197,14 @@ Kept out of Terraform so secrets never land in state, or because no azurerm reso
 ### Apply the identity replacements (#19)
 
 - Platform-services and the broker are not deployed, Argo is not installed, and no PostgreSQL roles exist, as confirmed in the [review](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/19#issuecomment-6660973361). There are no active consumers to migrate.
-- The workload-identity `prevent_destroy` block is removed in this change. Run `make plan-identities` and review deletion of `workflow-service-mi`, `artifact-service-mi` and `token-broker-mi`, replaced by `platform-services-mi`, `gh-token-broker-mi` and the new `create-run-mi`. Argo identities must remain. Run `make apply`, then review/apply the cluster and Kubernetes stages in the usual order. No preliminary apply just to remove the guard is needed.
+- The workload-identity `prevent_destroy` block is removed in this change. Run `make plan-identities` and review deletion of `workflow-service-mi`, `artifact-service-mi` and `token-broker-mi`, replaced by `platform-services-mi`, `gh-token-broker-mi` and the new `foreman-mi`. Argo identities must remain. Run `make apply`, then review/apply the cluster and Kubernetes stages in the usual order. No preliminary apply just to remove the guard is needed.
 - After the identity changes are applied, restore `lifecycle { prevent_destroy = true }` on `azurerm_user_assigned_identity.workloads` in `modules/identities/_workload-identities.tf` in a follow-up commit. Protection is temporarily absent for all workload identities because they share this definition; other guards are unchanged.
 
-### Trusted create-run step (#19)
+### Trusted foreman step (#19)
 
 - Key Vault values were populated under #21; do not rerun initialization/reset for this change. Terraform only configures names, grants and CSI references.
-- `create-run-mi` reads only `platform-services-admin-token`; `platform-services-mi` reads that token and `platform-services-hmac-key`. `gh-token-broker-mi` reads only `token-broker-gh-app-private-key`. Each Key Vault grant is at secret scope; the old vault-wide broker grant is removed. Names are in `key_vault_secret_names` in `defaults.auto.tfvars`.
-- The workflows repo must run the trusted step as `create-run` in `agents`, label its pod `azure.workload.identity/use: "true"`, and mount the read-only CSI volume using SecretProviderClass `create-run-admin-token` (root variable `create_run_secret_provider_class_name`) into the main container only. No admin-token Kubernetes Secret synchronization is configured.
+- `foreman-mi` reads only `platform-services-admin-token`; `platform-services-mi` reads that token and `platform-services-hmac-key`. `gh-token-broker-mi` reads only `token-broker-gh-app-private-key`. Each Key Vault grant is at secret scope; the old vault-wide broker grant is removed. Names are in `key_vault_secret_names` in `defaults.auto.tfvars`.
+- The workflows repo must run the trusted step as `foreman` in `agents`, label its pod `azure.workload.identity/use: "true"`, and mount the read-only CSI volume using SecretProviderClass `foreman-admin-token` (root variable `foreman_secret_provider_class_name`) into the main container only. No admin-token Kubernetes Secret synchronization is configured.
 - The trusted main container needs its Kubernetes API ServiceAccount token to create the per-step Secrets; it is separate from the Azure federation token and the Argo executor token. If the template disables automount, it must explicitly project the API token for this container. Keep the executor's existing permissions separate.
 - Create each HMAC Secret with a same-namespace Workflow ownerReference using `{{workflow.name}}` and `{{workflow.uid}}`, and `blockOwnerDeletion: false`. No Workflow-read or finalizer permissions are needed. The Role grants only `secrets: create`; it permits any Secret name in `agents`, accepted because this step is trusted. The agent steps mount only their own HMAC Secret; tokens never go through Argo parameters.
 - `deny-imds` stays unchanged. CSI workload identity does not need workload-pod IMDS access. This policy permits other egress; adding a narrower allow policy would not restrict it because NetworkPolicies are additive.
@@ -243,8 +243,8 @@ POC verification checklist (results reported by the human developer):
 - [x] `make reset-sdlc-secrets`: human developer ran it and verified the resulting values in Azure Portal on 2026-11-05; `token-broker-gh-app-private-key` remained unchanged. Temporary GPG isolation/cleanup and key properties were checked offline with mocked uploads.
 - [ ] Key Vault seed command against Azure: creates missing placeholders, preserves Portal-created versions on rerun, and fails cleanly if firewall/RBAC denies access. Verified offline with mocked CLI calls only.
 - [ ] #19 identity replacement and retirement: human-reviewed destroy list and removal of old federations/grants, including the vault-wide broker grant; no secret values modified.
-- [ ] `create-run` CSI admin-token mount succeeds while IMDS remains blocked; an unrelated ServiceAccount cannot mount it using create-run's identity.
-- [ ] `create-run` can create HMAC Secrets but cannot get/list/update/patch/delete Secrets or read Workflows; deleting a test Workflow garbage-collects its Secrets.
+- [ ] `foreman` CSI admin-token mount succeeds while IMDS remains blocked; an unrelated ServiceAccount cannot mount it using foreman's identity.
+- [ ] `foreman` can create HMAC Secrets but cannot get/list/update/patch/delete Secrets or read Workflows; deleting a test Workflow garbage-collects its Secrets.
 - [ ] `platform-services-mi` authenticates to PostgreSQL and Blob and reads only its admin/HMAC secrets; `gh-token-broker-mi` can read the GitHub App private key but not those secrets.
 - [ ] The SecretProviderClass CRD exists before `make plan-k8s`. `kubernetes_manifest` needs its schema at plan time; on a new cluster, apply the cluster stage (CSI add-on) first.
 - [ ] Workload identity authentication to Blob, Key Vault and PostgreSQL, including the manual database roles and Kubernetes workload labels.
