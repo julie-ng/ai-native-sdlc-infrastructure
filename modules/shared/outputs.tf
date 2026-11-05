@@ -48,3 +48,12 @@ output "log_analytics" {
     id   = azurerm_log_analytics_workspace.logs.id
   }
 }
+
+output "local_dev" {
+  description = "Identifiers for the local-dev service principal; no credentials."
+  value = {
+    client_id      = azuread_application.local_dev.client_id
+    object_id      = azuread_service_principal.local_dev.object_id
+    container_name = azurerm_storage_container.local_dev.name
+  }
+}
