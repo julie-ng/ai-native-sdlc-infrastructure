@@ -88,7 +88,7 @@ make stop-cluster     # AKS only (existing command)
 make start-cluster
 ```
 
-Set `AKS_RESOURCE_GROUP`, `AKS_CLUSTER_NAME`, `POSTGRES_RESOURCE_GROUP` and `POSTGRES_SERVER_NAME` in your shell (or pass them as Make variables). Start/stop commands call Azure CLI directly and wait for completion. Local platform commands start PostgreSQL before AKS and stop AKS before PostgreSQL; a failed command stops the sequence. Start the platform before running Terraform against Kubernetes resources.
+`AKS_RESOURCE_GROUP`, `AKS_CLUSTER_NAME`, `POSTGRES_RESOURCE_GROUP` and `POSTGRES_SERVER_NAME` default to the local `platform_stop` Terraform output; override them in your shell or as Make variables. The commands fail before calling Azure if a value is empty. Start/stop commands call Azure CLI directly and wait for completion. Local platform commands start PostgreSQL before AKS and stop AKS before PostgreSQL; a failed command stops the sequence. Start the platform before running Terraform against Kubernetes resources.
 
 The **Platform stop** GitHub workflow is manual-only and stops AKS and PostgreSQL in parallel jobs. After the cluster exists, run `make init`, then review `make plan-platform-stop` and run `make apply`. The deployer needs permission to create managed identities/federation in the identities group and assign roles on both target resources. The module uses AzureRM, with no new provider or credentials.
 
@@ -165,6 +165,7 @@ Kept out of Terraform so secrets never land in state, or because no azurerm reso
   ```
 
 - **Postgres roles for workload identities.** `workflow-service`, `argo-workflow-controller` and `argo-server` connect via Entra ID, but need database roles. As the Entra admin, create a role per managed identity (`pgaadauth_create_principal`) and grant it its database. **Unverified:** exact function arguments for managed identities.
+- **Local-dev service principal credential.** `{name}-local-dev` has no secret in Terraform. Run `make local-dev-credential` (`az ad app credential reset --append --years 1`), copy the secret from the terminal into a password manager or git-ignored file, and keep it out of the repo.
 - **Key Vault secrets.** GitHub App private key for the token broker ([ADR-012](https://github.com/julie-ng/ai-native-sdlc/blob/main/architecture/decisions/012-cloud-agent-identity.md)).
 
 ## Network
@@ -196,6 +197,7 @@ POC verification checklist (results reported by the human developer):
 - [x] `make start-cluster`, node readiness, and `make kubecontext` after restart. Start the cluster before planning or applying Kubernetes resources.
 - [x] Platform/database start and stop using configured resource names.
 - [x] New `platform_stop_mi` module: identities-group lookup, identity/federation creation, built-in role assignments and first manual stop workflow. 
+- [x] `local-dev` service principal: Entra app registration created by the applying identity, credential created with `make local-dev-credential`, and user delegation SAS URLs generated with it against the `artifacts` account.
 - [ ] Workload identity authentication to Blob, Key Vault and PostgreSQL, including the manual database roles and Kubernetes workload labels.
 - [ ] First workflow execution, Argo executor token mounts/RBAC, agent pool selection/tolerations, and no Argo artifact uploads from agent steps in the POC. The executor must reach the API server under `deny-imds`; the `401` from `/healthz` in an `agents` pod suggests it can.
 - [ ] Monitoring table selection, ConfigMap filters, observed ingestion volume and cap behavior. Successful resource deployment does not prove logs are flowing or filtering correctly.

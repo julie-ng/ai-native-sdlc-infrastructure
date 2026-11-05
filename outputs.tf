@@ -26,3 +26,8 @@ output "platform_stop" {
     AZ_POSTGRES_SERVER_NAME    = module.shared.postgres.name
   }
 }
+
+output "local_dev" {
+  description = "Local-dev service principal identifiers; no credentials."
+  value       = module.shared.local_dev
+}
