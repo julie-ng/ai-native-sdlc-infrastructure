@@ -15,7 +15,7 @@ Apply one at a time, in this order. Each depends on the outputs of the ones befo
 | 2 | [`shared`](./modules/shared/) | `ai-sdlc-shared-rg` | PostgreSQL Flexible Server (`workflow`, `argo` DBs), Blob Storage: `ai-sdlc{suffix}artifacts` (artifact service), `ai-sdlc{suffix}argo` (Argo artifact repository), Key Vault, ACR (pull only), Log Analytics (North Europe) |
 | 3 | [`identities`](./modules/identities/) | `ai-sdlc-identities-rg` | Persistent control-plane, kubelet and platform workload identities; role assignments for networking, ACR, Storage and Key Vault |
 | 4 | [`cluster`](./modules/cluster/) | `ai-sdlc-cluster-rg` | AKS (`system`, `platform` and `agents` pools, Cilium data plane and network policy, Key Vault CSI driver), cluster-specific workload federation, Container Insights, cluster-admin role assignment |
-| 5 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents` (Pod Security `baseline` on `agents`); ServiceAccounts; `argo-executor` ServiceAccount + Role; IMDS-blocking NetworkPolicy on `agents`; monitor agent ConfigMap |
+| 5 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents` (Pod Security `baseline` on `agents`); ServiceAccounts; `argo-executor` ServiceAccount + Role; IMDS-blocking NetworkPolicy on `agents`; trusted `create-run` Secret-create RBAC and admin-token CSI configuration; monitor agent ConfigMap |
 | 6 | [`platform_stop_mi`](./modules/platform_stop_mi/) | Existing `ai-sdlc-identities-rg` (data lookup) | GitHub OIDC managed identity, federation for `main`, AKS Contributor on the cluster and Contributor on the PostgreSQL server |
 
 Resource group names carry no random suffix. AKS creates its Azure-managed node resources in `ai-sdlc-aks-managed-rg`. Globally unique names (Key Vault, Storage, ACR, Postgres) and the cluster carry a random 4-character suffix, kept in state.
@@ -134,10 +134,10 @@ The four namespaces separate platform services, Argo, the GitHub broker and agen
 
 | Namespace | What goes here |
 |---|---|
-| `platform` | Workflow service and artifact service, with their workload-identity ServiceAccounts. |
+| `platform` | Platform-services app (workflow and artifact APIs), using ServiceAccount `platform-services` and managed identity `platform-services-mi`. |
 | `argo` | Argo Workflows controller and server, with their workload-identity ServiceAccounts. |
 | `github-broker` | GitHub token broker, with its workload-identity ServiceAccount (`token-broker`). |
-| `agents` | Agent workflow pods; ServiceAccounts for `planner`, `coder`, `reviewer` and `open-pr`; `argo-executor` ServiceAccount and RBAC. Agent ServiceAccounts have no cloud identity. |
+| `agents` | Agent workflow pods; ServiceAccounts for `planner`, `coder`, `reviewer` and `open-pr`; `argo-executor` ServiceAccount and RBAC; trusted `create-run` ServiceAccount with its own workload identity and Secret-create RBAC. Agent-role ServiceAccounts have no cloud identity. |
 
 Agent pods run LLM-driven code, so `agents` has two extra controls:
 
@@ -175,7 +175,15 @@ Kept out of Terraform so secrets never land in state, or because no azurerm reso
 
   Applies [`manifests/argo-executor-token.yaml`](./manifests/argo-executor-token.yaml) to `AGENTS_NAMESPACE` (default `agents`, matching Terraform). Run after the Kubernetes module apply and before submitting workflows. Rerunning applies the same metadata without replacing the token. The Secret stored in Key Vault does not create this Kubernetes Secret.
 
-- **Postgres roles for workload identities.** `workflow-service`, `argo-workflow-controller` and `argo-server` connect via Entra ID, but need database roles. As the Entra admin, create a role per managed identity (`pgaadauth_create_principal`) and grant it its database. **Unverified:** exact function arguments for managed identities.
+- **Postgres roles for workload identities.** As the Entra admin, create the app role for `platform-services-mi` (not the retired `workflow-service-mi`). Use its `principal_id` from `terraform output -json summary` → `identities.workloads["platform-services"]`:
+
+  ```sql
+  SELECT * FROM pg_catalog.pgaadauth_create_principal_with_oid(
+    'platform-services-mi', '<principal_id>', 'service', false, false
+  );
+  ```
+
+  Grant this role the app's required access in the `workflow` database. Argo still needs separate roles for `argo-workflow-controller-mi` and `argo-server-mi` in its `argo` database, using their own principal IDs. The function and managed-identity object type are [documented by Microsoft](https://learn.microsoft.com/en-us/azure/postgresql/security/security-manage-entra-users#create-a-role-by-using-the-microsoft-entra-id-object-identifier); database grants and authentication remain unverified on this deployment.
 - **Local-dev service principal credential.** `{name}-local-dev` has no secret in Terraform. Run `make local-dev-credential` (`az ad app credential reset --append --years 1`), copy the secret from the terminal into a password manager or git-ignored file, and keep it out of the repo.
 - **Key Vault secrets.** After the shared module apply, run `make init-kv-secrets` with your Azure CLI login and an allowed admin IP. It reads the vault name from the saved `summary.shared.key_vault.name` output; if that output is not saved yet, use `KEY_VAULT_NAME=<vault-name> make init-kv-secrets`.
   - Secret names and the bootstrap value are editable at the top of [`scripts/init-kv-secrets.sh`](./scripts/init-kv-secrets.sh).
@@ -185,6 +193,16 @@ Kept out of Terraform so secrets never land in state, or because no azurerm reso
   - Populate `token-broker-gh-app-private-key`, `julieio-goose-github-pat`, `vercel-ai-gateway-api-key` and `argo-executor-token` by hand in the Azure Portal; reset leaves these untouched. The initialization placeholder is not a generated credential or key.
   - Initialization lists secret names only, skips existing secrets, and suppresses the set response. Listing or creation errors stop the command; rerun after fixing the error. Run one initialization command at a time, before replacing values: the list/create sequence is not atomic.
   - Values are never managed or read by Terraform, so they do not enter Terraform state. These targets add no workload role assignments; access grants remain separate work.
+
+### Trusted create-run step (#19)
+
+- Key Vault values were populated under #21; do not rerun initialization/reset for this change. Terraform only configures names, grants and CSI references.
+- `create-run-mi` reads only `platform-services-admin-token`; `platform-services-mi` reads that token and `platform-services-hmac-key`. `gh-token-broker-mi` reads only `token-broker-gh-app-private-key`. Each Key Vault grant is at secret scope; the old vault-wide broker grant is removed. Names are in `key_vault_secret_names` in `defaults.auto.tfvars`.
+- The workflows repo must run the trusted step as `create-run` in `agents`, label its pod `azure.workload.identity/use: "true"`, and mount the read-only CSI volume using SecretProviderClass `create-run-admin-token` (root variable `create_run_secret_provider_class_name`) into the main container only. No admin-token Kubernetes Secret synchronization is configured.
+- The trusted main container needs its Kubernetes API ServiceAccount token to create the per-step Secrets; it is separate from the Azure federation token and the Argo executor token. If the template disables automount, it must explicitly project the API token for this container. Keep the executor's existing permissions separate.
+- Create each HMAC Secret with a same-namespace Workflow ownerReference using `{{workflow.name}}` and `{{workflow.uid}}`, and `blockOwnerDeletion: false`. No Workflow-read or finalizer permissions are needed. The Role grants only `secrets: create`; it permits any Secret name in `agents`, accepted because this step is trusted. The agent steps mount only their own HMAC Secret; tokens never go through Argo parameters.
+- `deny-imds` stays unchanged. CSI workload identity does not need workload-pod IMDS access. This policy permits other egress; adding a narrower allow policy would not restrict it because NetworkPolicies are additive.
+- Platform-services must use SA `platform-services` in `platform`. The broker keeps SA `token-broker` in `github-broker`, now annotated for `gh-token-broker-mi`. Container images, WorkflowTemplates and the API endpoint are maintained outside this repo.
 
 ## Network
 
@@ -218,6 +236,11 @@ POC verification checklist (results reported by the human developer):
 - [x] `local-dev` service principal: Entra app registration created by the applying identity, credential created with `make local-dev-credential`, and user delegation SAS URLs generated with it against the `artifacts` account.
 - [x] `make reset-sdlc-secrets`: human developer ran it and verified the resulting values in Azure Portal on 2026-11-05; `token-broker-gh-app-private-key` remained unchanged. Temporary GPG isolation/cleanup and key properties were checked offline with mocked uploads.
 - [ ] Key Vault seed command against Azure: creates missing placeholders, preserves Portal-created versions on rerun, and fails cleanly if firewall/RBAC denies access. Verified offline with mocked CLI calls only.
+- [ ] #19 identity replacement and retirement: human-reviewed destroy list and removal of old federations/grants, including the vault-wide broker grant; no secret values modified.
+- [ ] `create-run` CSI admin-token mount succeeds while IMDS remains blocked; an unrelated ServiceAccount cannot mount it using create-run's identity.
+- [ ] `create-run` can create HMAC Secrets but cannot get/list/update/patch/delete Secrets or read Workflows; deleting a test Workflow garbage-collects its Secrets.
+- [ ] `platform-services-mi` authenticates to PostgreSQL and Blob and reads only its admin/HMAC secrets; `gh-token-broker-mi` can read the GitHub App private key but not those secrets.
+- [ ] The SecretProviderClass CRD exists before `make plan-k8s`. `kubernetes_manifest` needs its schema at plan time; on a new cluster, apply the cluster stage (CSI add-on) first.
 - [ ] Workload identity authentication to Blob, Key Vault and PostgreSQL, including the manual database roles and Kubernetes workload labels.
 - [x] Human applied the four controller RBAC resources, installed chart 2.0.16 / Argo v4.1.6, and created the executor token Secret on 2026-11-05. Workflow `hello-world-7xzjr` succeeded in `agents` as `planner` (1/1 step, 20 seconds), confirming executor result reporting under `deny-imds`.
 - [x] Human confirmed hello-world on `aks-agents-39765645-vmss000008`, controller on `aks-platform-20300205-vmss000009` (Running, 0 restarts), and a successful repeat `make install-argo` (release revision 2) on 2026-11-05.

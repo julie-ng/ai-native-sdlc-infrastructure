@@ -31,6 +31,7 @@ output "key_vault" {
     name      = azurerm_key_vault.kv.name
     id        = azurerm_key_vault.kv.id
     vault_uri = azurerm_key_vault.kv.vault_uri
+    tenant_id = azurerm_key_vault.kv.tenant_id
   }
 }
 

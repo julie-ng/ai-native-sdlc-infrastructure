@@ -211,3 +211,21 @@ variable "platform_stop" {
   })
   description = "Platform stop workflow identity, trusted GitHub subject and resource-scoped built-in roles. Issuer and audience are GitHub/Azure-owned OIDC values."
 }
+
+# =====================
+# Key Vault References
+# =====================
+
+variable "key_vault_secret_names" {
+  type = object({
+    platform_services_admin_token   = string
+    platform_services_hmac_key      = string
+    token_broker_gh_app_private_key = string
+  })
+  description = "Existing Key Vault secret names for secret-scoped grants and CSI mounts. Values are populated outside Terraform."
+}
+
+variable "create_run_secret_provider_class_name" {
+  type        = string
+  description = "SecretProviderClass name referenced by the trusted create-run workflow volume in the agents namespace."
+}
