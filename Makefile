@@ -95,3 +95,7 @@ local-dev-credential:
 .PHONY: init-kv-secrets
 init-kv-secrets:
 	@bash scripts/init-kv-secrets.sh
+
+.PHONY: reset-sdlc-secrets
+reset-sdlc-secrets:
+	@bash scripts/reset-sdlc-secrets.sh

@@ -169,9 +169,11 @@ Kept out of Terraform so secrets never land in state, or because no azurerm reso
 - **Key Vault secrets.** After the shared module apply, run `make init-kv-secrets` with your Azure CLI login and an allowed admin IP. It reads the vault name from the saved `summary.shared.key_vault.name` output; if that output is not saved yet, use `KEY_VAULT_NAME=<vault-name> make init-kv-secrets`.
   - Secret names and the bootstrap value are editable at the top of [`scripts/init-kv-secrets.sh`](./scripts/init-kv-secrets.sh).
   - Creates `platform-services-admin-token`, `platform-services-hmac-key`, `token-broker-gh-app-private-key`, `agent-gpg-private-key`, `agent-gpg-public-key` and `agent-gpg-fingerprint` with the literal placeholder `INIT-ONLY-CHANGE-ME`.
-  - In Azure Portal → Key Vault → Secrets, open each secret and create a new version with the real value before using it. The placeholder is not a generated credential or key.
-  - Lists secret names only, skips existing secrets, and suppresses the set response. Listing or creation errors stop the command; rerun after fixing the error. Run one seed command at a time, before editing values in the Portal: the list/create sequence is not atomic.
-  - Values are never managed or read by Terraform, so they do not enter Terraform state. This target adds no workload role assignments; access grants remain separate work.
+  - To populate the admin token, HMAC key and GPG values, set `AGENT_GPG_USER_NAME` and `AGENT_GPG_USER_EMAIL` in git-ignored `scripts/.env`, then run `make reset-sdlc-secrets` from the repository root. Requires `openssl`, `gpg` and `gpgconf` as well as Azure CLI. Reset reads the vault name from the saved Terraform summary output.
+  - Reset creates two independent 32-byte random values (base64) and an Ed25519 signing key valid for one year, without a passphrase for unattended use. It uploads the armored private/public keys and fingerprint from private temporary files; its temporary GPG home and agent are cleaned up on exit without importing into the existing keyring. It creates new versions even when real values already exist. Updates are sequential: a failure can leave a partial reset.
+  - Populate `token-broker-gh-app-private-key` separately in the Azure Portal; reset leaves it untouched. The initialization placeholder is not a generated credential or key.
+  - Initialization lists secret names only, skips existing secrets, and suppresses the set response. Listing or creation errors stop the command; rerun after fixing the error. Run one initialization command at a time, before replacing values: the list/create sequence is not atomic.
+  - Values are never managed or read by Terraform, so they do not enter Terraform state. These targets add no workload role assignments; access grants remain separate work.
 
 ## Network
 
@@ -203,6 +205,7 @@ POC verification checklist (results reported by the human developer):
 - [x] Platform/database start and stop using configured resource names.
 - [x] New `platform_stop_mi` module: identities-group lookup, identity/federation creation, built-in role assignments and first manual stop workflow. 
 - [x] `local-dev` service principal: Entra app registration created by the applying identity, credential created with `make local-dev-credential`, and user delegation SAS URLs generated with it against the `artifacts` account.
+- [x] `make reset-sdlc-secrets`: human developer ran it and verified the resulting values in Azure Portal on 2026-11-05; `token-broker-gh-app-private-key` remained unchanged. Temporary GPG isolation/cleanup and key properties were checked offline with mocked uploads.
 - [ ] Key Vault seed command against Azure: creates missing placeholders, preserves Portal-created versions on rerun, and fails cleanly if firewall/RBAC denies access. Verified offline with mocked CLI calls only.
 - [ ] Workload identity authentication to Blob, Key Vault and PostgreSQL, including the manual database roles and Kubernetes workload labels.
 - [ ] First workflow execution, Argo executor token mounts/RBAC, agent pool selection/tolerations, and no Argo artifact uploads from agent steps in the POC. The executor must reach the API server under `deny-imds`; the `401` from `/healthz` in an `agents` pod suggests it can.
