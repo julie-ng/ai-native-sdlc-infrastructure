@@ -92,20 +92,6 @@ local-dev-credential:
 	client_id="$$(terraform output -json local_dev | jq -er '.client_id')"; \
 	az ad app credential reset --id "$$client_id" --append --years 1 --display-name local-dev
 
-# Only metadata is listed; existing values are neither read nor replaced.
 .PHONY: seed-key-vault-secrets
 seed-key-vault-secrets:
-	@set -eu; \
-	vault_name="$${KEY_VAULT_NAME:-}"; \
-	if [ -z "$$vault_name" ]; then \
-		vault_name="$$(terraform output -json summary | jq -er '.shared.key_vault.name | select(type == "string" and length > 0)')"; \
-	fi; \
-	existing="$$(az keyvault secret list --vault-name "$$vault_name" --query '[].name' --output tsv --only-show-errors)"; \
-	for secret_name in platform-services-admin-token platform-services-hmac-key gh-token-broker-app-private-key agent-gpg-private-key; do \
-		if printf '%s\n' "$$existing" | grep -Fx -- "$$secret_name" >/dev/null; then \
-			printf 'Skipping existing secret: %s\n' "$$secret_name"; \
-		else \
-			az keyvault secret set --vault-name "$$vault_name" --name "$$secret_name" --value 'BOOTSTRAP-REPLACE-ME' --output none --only-show-errors; \
-			printf 'Created bootstrap secret: %s\n' "$$secret_name"; \
-		fi; \
-	done
+	@bash scripts/seed-key-vault-secrets.sh
