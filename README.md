@@ -3,7 +3,7 @@
 Terraform for the AI SDLC platform on Azure: one AKS cluster plus the backing services it needs. Single environment (dev).
 
 > [!IMPORTANT]
-> All five infrastructure modules were deployed successfully by the human developer on 2026-10-22. Platform services and workflows have not been tested. Agents verify offline only; see [Unverified](#unverified).
+> All five infrastructure modules were deployed successfully by the human developer on 2026-10-22. Argo hello-world succeeded on 2026-11-05; platform services and agent workflows have not been tested. Agents verify offline only; see [Unverified](#unverified).
 
 ## Modules
 
@@ -23,6 +23,7 @@ Resource group names carry no random suffix. AKS creates its Azure-managed node 
 ## Prerequisites
 
 - `terraform` ≥ 1.10, `az`, `kubelogin`, `kubectl`, `jq`
+- For Argo: `helm` (tested locally with 4.3.1) and the Argo CLI 4.1.6. The sample devcontainer includes the Helm feature; its build has not been exercised here.
 - `private.auto.tfvars` (git-ignored) with your IP for the Key Vault, Storage and Postgres firewalls:
 
 ```hcl
@@ -145,6 +146,23 @@ Agent pods run LLM-driven code, so `agents` has two extra controls:
 
 The platform also blocks some addresses itself. For example, [WireServer](https://learn.microsoft.com/en-us/azure/virtual-network/what-is-ip-address-168-63-129-16) (`168.63.129.16`, the VM agent's channel to Azure) times out from `agents` pods on ports 80 and 32526, verified 2026-10-25. `deny-imds` doesn't cause this, and this repo doesn't enforce it.
 
+### Install Argo Workflows
+
+After applying the Kubernetes module (including the controller Roles and RoleBindings):
+
+```sh
+make create-argo-executor-token
+make install-argo
+env -u ARGO_SERVER argo submit --namespace agents --watch workflows/argo-hello-world.yaml
+```
+
+- Pins chart **2.0.16**, controller/executor **v4.1.6**, matching the tested CLI. [Values](./helm/argo-workflows/values.yaml) reuse Terraform's controller ServiceAccount and create no ServiceAccounts or RBAC.
+- The install target applies the upstream full CRDs with server-side apply, then runs `helm upgrade --install`. The chart's CRD hook is disabled because it creates its own ServiceAccount and cluster RBAC. CRD installation requires cluster-admin privileges.
+- Controller in `argo` on the `platform` pool; `--namespaced --managed-namespace=agents` limits the watch scope. Terraform Roles separately limit workflow access to `agents`, controller config-map reads to `argo`, and Secret reads to the named executor token only.
+- Workflow defaults disable token automount, use `argo-executor` for executor containers, and select/tolerate the `agents` pool. Hello-world runs as `planner`. No Argo server/UI, archive, node-status offload or artifact repository is configured. The CLI talks directly to Kubernetes using your kube login.
+- `ARGO_NAMESPACE` and `AGENTS_NAMESPACE` in Make must match Terraform's namespace defaults. The values file and hello-world manifest also use those names; update them together if renaming namespaces.
+- `make uninstall-argo` removes only the Helm release. CRDs, Workflow objects, the executor token Secret and Terraform resources remain. Workflow management stops until the controller is reinstalled.
+
 ### After apply — manual steps
 
 Kept out of Terraform so secrets never land in state, or because no azurerm resource covers it.
@@ -152,17 +170,10 @@ Kept out of Terraform so secrets never land in state, or because no azurerm reso
 - **Argo executor token Secret.** Argo mounts it into the executor containers of agent pods. Legacy non-expiring token — kept out of Terraform state:
 
   ```sh
-  kubectl apply -f - <<YAML
-  apiVersion: v1
-  kind: Secret
-  type: kubernetes.io/service-account-token
-  metadata:
-    name: argo-executor.service-account-token
-    namespace: agents
-    annotations:
-      kubernetes.io/service-account.name: argo-executor
-  YAML
+  make create-argo-executor-token
   ```
+
+  Applies [`manifests/argo-executor-token.yaml`](./manifests/argo-executor-token.yaml) to `AGENTS_NAMESPACE` (default `agents`, matching Terraform). Run after the Kubernetes module apply and before submitting workflows. Rerunning applies the same metadata without replacing the token. The Secret stored in Key Vault does not create this Kubernetes Secret.
 
 - **Postgres roles for workload identities.** `workflow-service`, `argo-workflow-controller` and `argo-server` connect via Entra ID, but need database roles. As the Entra admin, create a role per managed identity (`pgaadauth_create_principal`) and grant it its database. **Unverified:** exact function arguments for managed identities.
 - **Local-dev service principal credential.** `{name}-local-dev` has no secret in Terraform. Run `make local-dev-credential` (`az ad app credential reset --append --years 1`), copy the secret from the terminal into a password manager or git-ignored file, and keep it out of the repo.
@@ -208,7 +219,10 @@ POC verification checklist (results reported by the human developer):
 - [x] `make reset-sdlc-secrets`: human developer ran it and verified the resulting values in Azure Portal on 2026-11-05; `token-broker-gh-app-private-key` remained unchanged. Temporary GPG isolation/cleanup and key properties were checked offline with mocked uploads.
 - [ ] Key Vault seed command against Azure: creates missing placeholders, preserves Portal-created versions on rerun, and fails cleanly if firewall/RBAC denies access. Verified offline with mocked CLI calls only.
 - [ ] Workload identity authentication to Blob, Key Vault and PostgreSQL, including the manual database roles and Kubernetes workload labels.
-- [ ] First workflow execution, Argo executor token mounts/RBAC, agent pool selection/tolerations, and no Argo artifact uploads from agent steps in the POC. The executor must reach the API server under `deny-imds`; the `401` from `/healthz` in an `agents` pod suggests it can.
+- [x] Human applied the four controller RBAC resources, installed chart 2.0.16 / Argo v4.1.6, and created the executor token Secret on 2026-11-05. Workflow `hello-world-7xzjr` succeeded in `agents` as `planner` (1/1 step, 20 seconds), confirming executor result reporting under `deny-imds`.
+- [x] Human confirmed hello-world on `aks-agents-39765645-vmss000008`, controller on `aks-platform-20300205-vmss000009` (Running, 0 restarts), and a successful repeat `make install-argo` (release revision 2) on 2026-11-05.
+- [ ] Agent workflows, executor-only token mount inspection and application integrations remain untested.
+- [ ] CRD version upgrades, uninstall/reinstall and the sample devcontainer Helm feature build have not been exercised.
 - [ ] Monitoring table selection, ConfigMap filters, observed ingestion volume and cap behavior. Successful resource deployment does not prove logs are flowing or filtering correctly.
 - [ ] Identity continuity across a cluster rebuild; this lifecycle has not been exercised yet.
 

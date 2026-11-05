@@ -1,0 +1,8 @@
+# Kubernetes populates the token; no credential value is stored in this manifest.
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/service-account-token
+metadata:
+  name: argo-executor.service-account-token
+  annotations:
+    kubernetes.io/service-account.name: argo-executor
