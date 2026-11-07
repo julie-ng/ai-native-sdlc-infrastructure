@@ -14,6 +14,10 @@ output "summary" {
   }
 }
 
+output "github_workflows" {
+  value = module.identities.github_acr_push
+}
+
 output "platform_stop" {
   description = "Repository Actions variables for the stop workflow; identifiers only, no credentials."
   value = {

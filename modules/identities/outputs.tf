@@ -43,3 +43,15 @@ output "workloads" {
     }
   }
 }
+
+output "github_acr_push" {
+  value = {
+    id           = azurerm_user_assigned_identity.github_workflow_acr_push.id
+    name         = azurerm_user_assigned_identity.github_workflow_acr_push.name
+    client_id    = azurerm_user_assigned_identity.github_workflow_acr_push.client_id
+    principal_id = azurerm_user_assigned_identity.github_workflow_acr_push.principal_id
+  }
+
+  # Nodes must be able to pull images when the cluster starts.
+  depends_on = [azurerm_role_assignment.github_workflow_acr_push]
+}

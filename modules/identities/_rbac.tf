@@ -1,6 +1,17 @@
 # ==================
 #  Persistent Grants
 # ==================
+#
+
+# ==================
+#  GitHub Workflows
+# ==================
+
+resource "azurerm_role_assignment" "github_workflow_acr_push" {
+  role_definition_name = "AcrPush"
+  scope                = var.container_registry_id
+  principal_id         = azurerm_user_assigned_identity.github_workflow_acr_push.principal_id
+}
 
 # =============
 # Control Plane
