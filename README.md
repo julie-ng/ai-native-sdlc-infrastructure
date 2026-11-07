@@ -175,7 +175,7 @@ Kept out of Terraform so secrets never land in state, or because no azurerm reso
 
   Applies [`manifests/argo-executor-token.yaml`](./manifests/argo-executor-token.yaml) to `AGENTS_NAMESPACE` (default `agents`, matching Terraform). Run after the Kubernetes module apply and before submitting workflows. Rerunning applies the same metadata without replacing the token. The Secret stored in Key Vault does not create this Kubernetes Secret.
 
-- **Postgres roles for workload identities.** As the Entra admin, create the app role for `platform-services-mi` (not the retired `workflow-service-mi`). Use its `principal_id` from `terraform output -json summary` → `identities.workloads["platform-services"]`:
+- [**Postgres roles for workload identities.**](https://learn.microsoft.com/en-us/azure/postgresql/security/security-manage-entra-users?source=recommendations) As the Entra admin, create the app role for `platform-services-mi` (not the retired `workflow-service-mi`). Use its `principal_id` from `terraform output -json summary` → `identities.workloads["platform-services"]`:
 
   ```sql
   SELECT * FROM pg_catalog.pgaadauth_create_principal_with_oid(
