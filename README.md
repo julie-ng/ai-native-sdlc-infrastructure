@@ -214,11 +214,11 @@ Terraform manages references to existing Key Vault secrets only. The real values
 
 | ServiceAccount / identity | SecretProviderClass | Mounted file names |
 |---|---|---|
-| `coder` / `coder-mi` | `coder-gpg-key` | `agent-gpg-private-key`, `julieio-goose-github-pat`, `vercel-ai-gateway-api-key` |
+| `coder` / `coder-mi` | `coder-secrets` | `agent-gpg-private-key`, `julieio-goose-github-pat`, `vercel-ai-gateway-api-key` |
 | `planner` / `planner-mi` | `planner-secrets` | `julieio-goose-github-pat`, `vercel-ai-gateway-api-key` |
 
 - Each identity has only `Key Vault Secrets User`, assigned separately on each listed secret. Planner cannot read the signing key. Reviewer and open-pr have no federation or client-ID annotation. Agent API-token automount remains off.
-- Root `agent_secret_provider_class_names` selects the two roles and their class names; `key_vault_secret_names` supplies object/file names. These replace the coder-specific inputs; update any personal overrides. The existing coder identity, federation, grant and CSI class name are retained; Terraform may recreate the CSI resource at its new manifest address. No state-migration block is maintained for this non-production cluster.
+- Root `agent_secret_provider_class_names` selects the two roles and their class names; `key_vault_secret_names` supplies object/file names. These replace the coder-specific inputs; update any personal overrides. The existing coder identity, federation and signing grant are retained; the CSI class is renamed to `coder-secrets` to cover all three credentials. Terraform may recreate the CSI resource at its new manifest address. No state-migration block is maintained for this non-production cluster.
 - Apply identities, cluster and Kubernetes stages in that order, reviewing each plan. The cluster/CSI CRD must exist before Kubernetes planning. Only the human developer runs these commands.
 - In the workflows repo, set `serviceAccountName` to the role and label the pod `azure.workload.identity/use: "true"`. Add a read-only CSI volume using the matching class and mount it in the main container only. The example uses coder; for planner use `planner` and `planner-secrets`.
 
@@ -237,7 +237,7 @@ spec:
         driver: secrets-store.csi.k8s.io
         readOnly: true
         volumeAttributes:
-          secretProviderClass: coder-gpg-key
+          secretProviderClass: coder-secrets
   # Add to the existing main container's volumeMounts only:
   # - name: agent-secrets
   #   mountPath: /mnt/agent-secrets

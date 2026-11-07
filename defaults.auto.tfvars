@@ -95,6 +95,6 @@ foreman_secret_provider_class_name = "foreman-admin-token"
 
 # #26 approves separate identities for these two agent roles only.
 agent_secret_provider_class_names = {
-  coder   = "coder-gpg-key"
+  coder   = "coder-secrets"
   planner = "planner-secrets"
 }
