@@ -1,7 +1,7 @@
 # =====================
 #  Workload Identities
 # =====================
-# Platform services plus the dedicated signing-key-only agent exception (ADR-003).
+# Platform services plus the approved planner/coder secret-read exception (#26).
 
 resource "azurerm_user_assigned_identity" "workloads" {
   for_each            = var.workload_identities
