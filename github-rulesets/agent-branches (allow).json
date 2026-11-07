@@ -1,0 +1,35 @@
+{
+  "id": 25616445,
+  "name": "agent-branches (allow)",
+  "target": "branch",
+  "source_type": "Repository",
+  "source": "julie-ng/ai-native-sdlc-agent-images",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "exclude": [
+        "refs/heads/agent/**/*",
+        "refs/heads/codex/**/*",
+        "refs/heads/claude/**/*"
+      ],
+      "include": [
+        "~ALL"
+      ]
+    }
+  },
+  "rules": [
+    {
+      "type": "deletion"
+    },
+    {
+      "type": "creation"
+    }
+  ],
+  "bypass_actors": [
+    {
+      "actor_id": 5,
+      "actor_type": "RepositoryRole",
+      "bypass_mode": "always"
+    }
+  ]
+}
