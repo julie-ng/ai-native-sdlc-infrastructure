@@ -13,9 +13,9 @@ Apply one at a time, in this order. Each depends on the outputs of the ones befo
 |---|---|---|---|
 | 1 | [`networking`](./modules/networking/) | `ai-sdlc-networking-rg` | VNet, `aks-nodes-subnet` (service endpoints: Key Vault, Storage), empty `AzureFirewallSubnet`, ingress + egress static IPs |
 | 2 | [`shared`](./modules/shared/) | `ai-sdlc-shared-rg` | PostgreSQL Flexible Server (`workflow`, `argo` DBs), Blob Storage: `ai-sdlc{suffix}artifacts` (artifact service), `ai-sdlc{suffix}argo` (Argo artifact repository), Key Vault, ACR (pull only), Log Analytics (North Europe) |
-| 3 | [`identities`](./modules/identities/) | `ai-sdlc-identities-rg` | Persistent control-plane, kubelet, platform workload and agent signing-key identities; role assignments for networking, ACR, Storage and Key Vault |
+| 3 | [`identities`](./modules/identities/) | `ai-sdlc-identities-rg` | Persistent control-plane, kubelet, platform workload and agent secret-read identities; role assignments for networking, ACR, Storage and Key Vault |
 | 4 | [`cluster`](./modules/cluster/) | `ai-sdlc-cluster-rg` | AKS (`system`, `platform` and `agents` pools, Cilium data plane and network policy, Key Vault CSI driver), cluster-specific workload federation, Container Insights, cluster-admin role assignment |
-| 5 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents` (Pod Security `baseline` on `agents`); ServiceAccounts; `argo-executor` ServiceAccount + Role; IMDS-blocking NetworkPolicy on `agents`; trusted `foreman` Secret-create RBAC and admin-token CSI configuration; coder signing-key CSI configuration; monitor agent ConfigMap |
+| 5 | [`kubernetes`](./modules/kubernetes/) | — | Namespaces `platform`, `argo`, `github-broker`, `agents` (Pod Security `baseline` on `agents`); ServiceAccounts; `argo-executor` ServiceAccount + Role; IMDS-blocking NetworkPolicy on `agents`; trusted `foreman` Secret-create RBAC and admin-token CSI configuration; planner/coder secret CSI configuration; monitor agent ConfigMap |
 | 6 | [`platform_stop_mi`](./modules/platform_stop_mi/) | Existing `ai-sdlc-identities-rg` (data lookup) | GitHub OIDC managed identity, federation for `main`, AKS Contributor on the cluster and Contributor on the PostgreSQL server |
 
 Resource group names carry no random suffix. AKS creates its Azure-managed node resources in `ai-sdlc-aks-managed-rg`. Globally unique names (Key Vault, Storage, ACR, Postgres) and the cluster carry a random 4-character suffix, kept in state.
@@ -137,7 +137,7 @@ The four namespaces separate platform services, Argo, the GitHub broker and agen
 | `platform` | Platform-services app (workflow and artifact APIs), using ServiceAccount `platform-services` and managed identity `platform-services-mi`. |
 | `argo` | Argo Workflows controller and server, with their workload-identity ServiceAccounts. |
 | `github-broker` | GitHub token broker, with its workload-identity ServiceAccount (`token-broker`). |
-| `agents` | Agent workflow pods; ServiceAccounts for `planner`, `coder`, `reviewer` and `open-pr`; `argo-executor` ServiceAccount and RBAC; trusted `foreman` ServiceAccount with its own workload identity and Secret-create RBAC. Among agent roles, only `coder` has a cloud identity, restricted to reading the commit-signing key (ADR-003 exception). |
+| `agents` | Agent workflow pods; ServiceAccounts for `planner`, `coder`, `reviewer` and `open-pr`; `argo-executor` ServiceAccount and RBAC; trusted `foreman` ServiceAccount with its own workload identity and Secret-create RBAC. Among agent roles, `planner` and `coder` have separate identities with secret-scoped read access (#26); reviewer and open-pr have no identity. |
 
 Agent pods run LLM-driven code, so `agents` has two extra controls:
 
@@ -208,32 +208,46 @@ The human developer reported a successful apply on 2026-11-05 after reviewing th
 - `deny-imds` stays unchanged. CSI workload identity does not need workload-pod IMDS access. This policy permits other egress; adding a narrower allow policy would not restrict it because NetworkPolicies are additive.
 - Platform-services must use SA `platform-services` in `platform`. The broker keeps SA `token-broker` in `github-broker`, now annotated for `gh-token-broker-mi`. Container images, WorkflowTemplates and the API endpoint are maintained outside this repo.
 
-### Coder signing-key mount (#18)
+### Planner and coder secret mounts (#18, #26)
 
-- The existing Key Vault secret `agent-gpg-private-key` contains the ASCII-armored private key for `@julieio-goose`, populated under #21. Do not rerun initialization/reset. Terraform manages references only, never the value.
-- Dedicated `coder-mi` has only `Key Vault Secrets User` on that one secret. Root `coder_service_accounts = ["coder"]` controls federation and annotations; coder stays in the agent ServiceAccount resource with token automount off. Planner, reviewer and open-pr receive no signing identity.
-- Apply the identities, cluster and Kubernetes stages in the established order, reviewing each plan. The cluster/CSI CRD must exist before Kubernetes planning. This change adds the signing identity/grant, coder federation/annotation and SecretProviderClass; it does not require replacing existing identities.
-- In the workflows repo, run the committing pod as `coder` in `agents`, label it `azure.workload.identity/use: "true"`, and add the volume and main-container mount below. These are workflow configuration instructions; this repo does not change Argo templates. Keep the projected `token-broker` token and Argo executor token separate.
+Terraform manages references to existing Key Vault secrets only. The real values were populated under #21; do not rerun initialization/reset.
+
+| ServiceAccount / identity | SecretProviderClass | Mounted file names |
+|---|---|---|
+| `coder` / `coder-mi` | `coder-secrets` | `agent-gpg-private-key`, `julieio-goose-github-pat`, `vercel-ai-gateway-api-key` |
+| `planner` / `planner-mi` | `planner-secrets` | `julieio-goose-github-pat`, `vercel-ai-gateway-api-key` |
+
+- Each identity has only `Key Vault Secrets User`, assigned separately on each listed secret. Planner cannot read the signing key. Reviewer and open-pr have no federation or client-ID annotation. Agent API-token automount remains off.
+- Root `agent_secret_provider_class_names` selects the two roles and their class names; `key_vault_secret_names` supplies object/file names. These replace the coder-specific inputs; update any personal overrides. The existing coder identity, federation and signing grant are retained; the CSI class is renamed to `coder-secrets` to cover all three credentials. Terraform may recreate the CSI resource at its new manifest address. No state-migration block is maintained for this non-production cluster.
+- Apply identities, cluster and Kubernetes stages in that order, reviewing each plan. The cluster/CSI CRD must exist before Kubernetes planning. Only the human developer runs these commands.
+- In the workflows repo, set `serviceAccountName` to the role and label the pod `azure.workload.identity/use: "true"`. Add a read-only CSI volume using the matching class and mount it in the main container only. The example uses coder; for planner use `planner` and `planner-secrets`.
 
 ```yaml
-# Pod spec fragment; SecretProviderClass name matches defaults.auto.tfvars.
-serviceAccountName: coder
-automountServiceAccountToken: false
-volumes:
-  - name: agent-signing-key
-    csi:
-      driver: secrets-store.csi.k8s.io
-      readOnly: true
-      volumeAttributes:
-        secretProviderClass: coder-gpg-key
-# Add to the existing main container's volumeMounts only:
-# - name: agent-signing-key
-#   mountPath: /mnt/agent-signing
-#   readOnly: true
+# Pod metadata:
+metadata:
+  labels:
+    azure.workload.identity/use: "true"
+# Pod spec fragment:
+spec:
+  serviceAccountName: coder
+  automountServiceAccountToken: false
+  volumes:
+    - name: agent-secrets
+      csi:
+        driver: secrets-store.csi.k8s.io
+        readOnly: true
+        volumeAttributes:
+          secretProviderClass: coder-secrets
+  # Add to the existing main container's volumeMounts only:
+  # - name: agent-secrets
+  #   mountPath: /mnt/agent-secrets
+  #   readOnly: true
 ```
 
-- The mounted file is `/mnt/agent-signing/agent-gpg-private-key`. The agent entrypoint must import it into its private GPG home before signing; do not print it or pass it through Argo parameters. No Kubernetes Secret synchronization is configured. Secret and SecretProviderClass names are root inputs.
-- Keep `deny-imds` unchanged. This is the approved [ADR-003 exception](https://github.com/julie-ng/ai-native-sdlc/blob/main/architecture/decisions/003-platform-services-vs-agent-pods.md#exception-workload-identity-for-the-commit-signing-key). The CSI add-on identity receives no grant: it is attached to every node pool, while IMDS is blocked only in `agents`.
+- Files appear under `/mnt/agent-secrets/<object-name>`. The agent entrypoint maps the PAT to `GH_TOKEN` and the gateway key to `AI_GATEWAY_API_KEY`; coder imports the private key into its private GPG home. Do not print values or pass them through Argo parameters. No Kubernetes Secret synchronization is configured. Entrypoint and Argo template changes belong to other repos.
+- The PAT is deliberately shared with planner: it can push within its token permissions. Main-branch rulesets still require a PR and signed commits; they do not make planner read-only. The token broker is the deferred replacement ([#26](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/26)).
+- Keep `deny-imds` and foreman unchanged. CSI uses workload identity; the node CSI add-on identity gets no grant. Per-run HMAC tokens remain with foreman.
+- **ADR discrepancy:** [ADR-003](https://github.com/julie-ng/ai-native-sdlc/blob/main/architecture/decisions/003-platform-services-vs-agent-pods.md) still limits the exception to the signing key. The human decision in #26 (2026-11-07) supersedes that limit for these long-lived secrets; the parent ADR update is pending.
 
 ## Network
 
@@ -268,8 +282,8 @@ POC verification checklist (results reported by the human developer):
 - [x] `make reset-sdlc-secrets`: human developer ran it and verified the resulting values in Azure Portal on 2026-11-05; `token-broker-gh-app-private-key` remained unchanged. Temporary GPG isolation/cleanup and key properties were checked offline with mocked uploads.
 - [ ] Key Vault seed command against Azure: creates missing placeholders, preserves Portal-created versions on rerun, and fails cleanly if firewall/RBAC denies access. Verified offline with mocked CLI calls only.
 - [ ] #19 identity replacement and retirement: human-reviewed destroy list and removal of old federations/grants, including the vault-wide broker grant; no secret values modified.
-- [ ] #18 provisioning: review the secret-scoped grant and coder-only federation/annotation after staged applies; confirm planner/reviewer/open-pr have no signing identity and existing identity grants are unchanged.
-- [ ] #18 CSI positive/negative checks: a labeled test pod as coder mounts the signing key with IMDS still blocked; verify only that the file is nonempty (do not print the private key). An otherwise identical pod as planner, using the same SecretProviderClass, must fail to mount. Inspect mount events for the authentication failure.
+- [ ] #26 provisioning: review the four new secret-scoped grants, planner/coder-only federation and annotations, retained coder signing grant and any CSI resource recreation. Reviewer/open-pr have no identity; existing platform grants are unchanged.
+- [ ] #26 CSI positive/negative checks: labeled coder and planner pods mount their three/two files while IMDS remains blocked; verify files are nonempty without printing values. Planner must fail to read `agent-gpg-private-key` directly using its own identity, and must fail to mount coder's class. Inspect mount events for authentication failure.
 - [ ] #18 least privilege: coder's signing identity cannot read the admin/HMAC or GitHub App secrets; commit signing from the mounted key succeeds. Agent entrypoint/GPG import and Argo volume configuration are maintained outside this repo.
 - [ ] `foreman` CSI admin-token mount succeeds while IMDS remains blocked; an unrelated ServiceAccount cannot mount it using foreman's identity.
 - [ ] `foreman` can create HMAC Secrets but cannot get/list/update/patch/delete Secrets or read Workflows; deleting a test Workflow garbage-collects its Secrets.
