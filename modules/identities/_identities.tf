@@ -46,7 +46,7 @@ resource "azurerm_user_assigned_identity" "github_workflow_acr_push" {
 # Configuration values - https://docs.github.com/en/actions/reference/security/oidc
 resource "azurerm_federated_identity_credential" "github_agent_images_prod_environment" {
   name                      = "ai-sdlc-github-push-agent-images"
-  audience                  = ["api://AzureADTokenExchange"] # per MSFT docs
+  audience                  = ["api://AzureADTokenExchange"]                # per MSFT docs
   issuer                    = "https://token.actions.githubusercontent.com" # per GitHub Docs
   user_assigned_identity_id = azurerm_user_assigned_identity.github_workflow_acr_push.id
   subject                   = "repo:julie-ng@1269507/ai-native-sdlc-agent-images@1428424091:environment:production" # immutable subject claim
