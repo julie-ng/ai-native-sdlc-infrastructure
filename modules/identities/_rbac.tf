@@ -111,9 +111,30 @@ resource "azurerm_role_assignment" "platform_services_on_kv" {
   principal_id         = azurerm_user_assigned_identity.workloads["platform-services"].principal_id
 }
 
-# ADR-003 exception: no other cloud access for the committing agent identity.
+# #26 retains the existing coder-only signing-key grant.
 resource "azurerm_role_assignment" "coder_on_gpg_key" {
   role_definition_name = "Key Vault Secrets User"
   scope                = "${var.key_vault_id}/secrets/${var.key_vault_secret_names.agent_gpg_private_key}"
   principal_id         = azurerm_user_assigned_identity.workloads["coder"].principal_id
+}
+
+# Long-lived credentials are already needed in these pods; grants stay per secret (#26).
+resource "azurerm_role_assignment" "coder_on_agent_secrets" {
+  for_each = {
+    github_pat = var.key_vault_secret_names.julieio_goose_github_pat
+    ai_gateway = var.key_vault_secret_names.vercel_ai_gateway_api_key
+  }
+  role_definition_name = "Key Vault Secrets User"
+  scope                = "${var.key_vault_id}/secrets/${each.value}"
+  principal_id         = azurerm_user_assigned_identity.workloads["coder"].principal_id
+}
+
+resource "azurerm_role_assignment" "planner_on_agent_secrets" {
+  for_each = {
+    github_pat = var.key_vault_secret_names.julieio_goose_github_pat
+    ai_gateway = var.key_vault_secret_names.vercel_ai_gateway_api_key
+  }
+  role_definition_name = "Key Vault Secrets User"
+  scope                = "${var.key_vault_id}/secrets/${each.value}"
+  principal_id         = azurerm_user_assigned_identity.workloads["planner"].principal_id
 }

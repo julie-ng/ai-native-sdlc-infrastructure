@@ -87,10 +87,14 @@ key_vault_secret_names = {
   platform_services_hmac_key      = "platform-services-hmac-key"
   token_broker_gh_app_private_key = "token-broker-gh-app-private-key"
   agent_gpg_private_key           = "agent-gpg-private-key"
+  julieio_goose_github_pat        = "julieio-goose-github-pat"
+  vercel_ai_gateway_api_key       = "vercel-ai-gateway-api-key"
 }
 
 foreman_secret_provider_class_name = "foreman-admin-token"
 
-# ADR-003 exception: only committing roles may read the signing key.
-coder_service_accounts           = ["coder"]
-coder_secret_provider_class_name = "coder-gpg-key"
+# #26 approves separate identities for these two agent roles only.
+agent_secret_provider_class_names = {
+  coder   = "coder-gpg-key"
+  planner = "planner-secrets"
+}

@@ -47,6 +47,8 @@ variable "key_vault_secret_names" {
     platform_services_hmac_key      = string
     token_broker_gh_app_private_key = string
     agent_gpg_private_key           = string
+    julieio_goose_github_pat        = string
+    vercel_ai_gateway_api_key       = string
   })
   description = "Existing Key Vault secret names for secret-scoped grants and CSI mounts. Values are populated outside Terraform."
 }
@@ -65,17 +67,7 @@ variable "foreman_secret_provider_class_name" {
   description = "SecretProviderClass name referenced by the trusted foreman workflow volume in the agents namespace."
 }
 
-variable "coder_service_accounts" {
-  type        = set(string)
-  description = "Agent ServiceAccounts annotated for the dedicated signing-key identity."
-}
-
-variable "coder_client_id" {
-  type        = string
-  description = "Client ID of the dedicated signing-key-only identity."
-}
-
-variable "coder_secret_provider_class_name" {
-  type        = string
-  description = "SecretProviderClass name for the read-only agent signing-key CSI mount."
+variable "agent_secret_provider_class_names" {
+  type        = map(string)
+  description = "Agent role to CSI class name, separate from platform ServiceAccounts."
 }
