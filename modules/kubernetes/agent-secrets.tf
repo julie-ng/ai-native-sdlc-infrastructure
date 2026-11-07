@@ -16,11 +16,6 @@ locals {
   }
 }
 
-moved {
-  from = kubernetes_manifest.coder_gpg_key
-  to   = kubernetes_manifest.agent_secrets["coder"]
-}
-
 resource "kubernetes_manifest" "agent_secrets" {
   for_each = var.agent_secret_provider_class_names
 
