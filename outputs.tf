@@ -15,7 +15,10 @@ output "summary" {
 }
 
 output "github_workflows" {
-  value = module.identities.github_acr_push
+  value = {
+    agent_images      = module.identities.github_agent_images_acr_push
+    platform_services = module.identities.github_platform_services_acr_push
+  }
 }
 
 output "platform_stop" {

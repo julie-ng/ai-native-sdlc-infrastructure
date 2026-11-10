@@ -7,10 +7,16 @@
 #  GitHub Workflows
 # ==================
 
-resource "azurerm_role_assignment" "github_workflow_acr_push" {
+resource "azurerm_role_assignment" "github_agent_images_acr_push" {
   role_definition_name = "AcrPush"
   scope                = var.container_registry_id
-  principal_id         = azurerm_user_assigned_identity.github_workflow_acr_push.principal_id
+  principal_id         = azurerm_user_assigned_identity.github_agent_images_mi.principal_id
+}
+
+resource "azurerm_role_assignment" "github_platform_services_acr_push" {
+  role_definition_name = "AcrPush"
+  scope                = var.container_registry_id
+  principal_id         = azurerm_user_assigned_identity.github_platform_services_mi.principal_id
 }
 
 # =============
