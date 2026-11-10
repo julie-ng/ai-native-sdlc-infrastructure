@@ -62,6 +62,11 @@ variable "key_vault_tenant_id" {
   description = "Tenant owning the vault, from the shared module."
 }
 
+variable "platform_services_secret_provider_class_name" {
+  type        = string
+  description = "SecretProviderClass name referenced by the platform-services Deployment in the platform namespace."
+}
+
 variable "foreman_secret_provider_class_name" {
   type        = string
   description = "SecretProviderClass name referenced by the trusted foreman workflow volume in the agents namespace."

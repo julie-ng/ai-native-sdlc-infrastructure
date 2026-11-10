@@ -249,6 +249,12 @@ spec:
 - Keep `deny-imds` and foreman unchanged. CSI uses workload identity; the node CSI add-on identity gets no grant. Per-run HMAC tokens remain with foreman.
 - **ADR discrepancy:** [ADR-003](https://github.com/julie-ng/ai-native-sdlc/blob/main/architecture/decisions/003-platform-services-vs-agent-pods.md) still limits the exception to the signing key. The human decision in #26 (2026-11-07) supersedes that limit for these long-lived secrets; the parent ADR update is pending.
 
+### Platform-services secret mount
+
+- SecretProviderClass `platform-services-secrets` in `platform` uses the existing `platform-services-mi` identity for ServiceAccount `platform-services`.
+- Mount it read-only at `/mnt/secrets` to read `platform-services-admin-token` and `platform-services-hmac-key` (the configured Key Vault object names). No Kubernetes Secret synchronization is configured.
+- The Deployment, workload-identity pod label and volume mount live in [platform-services](https://github.com/julie-ng/ai-native-sdlc-platform-services/issues/45).
+
 ## Network
 
 | Range | Use |
@@ -288,6 +294,7 @@ POC verification checklist (results reported by the human developer):
 - [ ] `foreman` CSI admin-token mount succeeds while IMDS remains blocked; an unrelated ServiceAccount cannot mount it using foreman's identity.
 - [ ] `foreman` can create HMAC Secrets but cannot get/list/update/patch/delete Secrets or read Workflows; deleting a test Workflow garbage-collects its Secrets.
 - [ ] `platform-services-mi` authenticates to PostgreSQL and Blob and reads only its admin/HMAC secrets; `gh-token-broker-mi` can read the GitHub App private key but not those secrets.
+- [ ] #29: human-run plan adds only `platform-services-secrets`; after apply, the labeled `platform-services` pod in `platform` mounts nonempty `platform-services-admin-token` and `platform-services-hmac-key` files at `/mnt/secrets` without printing values. Deployment lives in platform-services.
 - [ ] The SecretProviderClass CRD exists before `make plan-k8s`. `kubernetes_manifest` needs its schema at plan time; on a new cluster, apply the cluster stage (CSI add-on) first.
 - [ ] Workload identity authentication to Blob, Key Vault and PostgreSQL, including the manual database roles and Kubernetes workload labels.
 - [x] Human applied the four controller RBAC resources, installed chart 2.0.16 / Argo v4.1.6, and created the executor token Secret on 2026-11-05. Workflow `hello-world-7xzjr` succeeded in `agents` as `planner` (1/1 step, 20 seconds), confirming executor result reporting under `deny-imds`.

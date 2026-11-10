@@ -91,6 +91,8 @@ key_vault_secret_names = {
   vercel_ai_gateway_api_key       = "vercel-ai-gateway-api-key"
 }
 
+platform_services_secret_provider_class_name = "platform-services-secrets"
+
 foreman_secret_provider_class_name = "foreman-admin-token"
 
 # #26 approves separate identities for these two agent roles only.
