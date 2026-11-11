@@ -64,7 +64,7 @@ resource "azurerm_role_assignment" "storage_admin" {
 #  Local Development SP
 # ======================
 # For running the artifact service on a laptop against real storage. No client secret or
-# certificate here: credentials would land in state. Create one manually (see README).
+# certificate here: credentials would land in state. Create one manually (see docs/deployment.md).
 # Only the container is writable; the delegator role at account scope is what lets the
 # service sign user delegation SAS URLs, and it grants no blob access by itself.
 

@@ -40,7 +40,7 @@ provider "azuread" {}
 
 # Local accounts are disabled on the cluster, so authenticate via Entra ID.
 # Requires `kubelogin` and an `az login` session on the machine running Terraform.
-# Only usable once the cluster exists - see README for apply order.
+# Only usable once the cluster exists - see docs/deployment.md for apply order.
 provider "kubernetes" {
   host                   = module.cluster.kube_api.host
   cluster_ca_certificate = base64decode(module.cluster.kube_api.cluster_ca_certificate)

@@ -8,14 +8,15 @@ Project-specific instructions for any agent working in this repo, alongside the 
 ## About this repo
 
 - Terraform for the AI SDLC platform on Azure: one AKS cluster plus its backing services. Single environment (`dev`).
-- Infrastructure choices and trade-offs: [`docs/decisions.md`](./docs/decisions.md). Read it before changing anything.
+- Infrastructure choices and trade-offs: [`docs/decisions-log.md`](./docs/decisions-log.md). Read it before changing anything.
 
 ## Reading order
 
-1. [README](./README.md): modules, apply order, manual steps, unverified items
-2. [`docs/decisions.md`](./docs/decisions.md)
-3. The ADRs relevant to the task
-4. Open issues on this repo, for deferred target designs
+1. [README](./README.md): deployed resources, identity and access model (IAM), unverified items
+2. [`docs/deployment.md`](./docs/deployment.md): apply order, manual steps
+3. [`docs/decisions-log.md`](./docs/decisions-log.md)
+4. The ADRs relevant to the task
+5. Open issues on this repo, for deferred target designs
 
 If an ADR and this repo disagree, flag it to the human developer. Don't silently pick one.
 
@@ -29,22 +30,22 @@ If an ADR and this repo disagree, flag it to the human developer. Don't silently
 ## Verify, don't guess
 
 - **Provider argument names:** check them against `terraform providers schema -json` for the pinned version, not against memory or older examples. azurerm 5.x renamed many arguments and added required blocks.
-- **Azure and Kubernetes behaviour:** primary sources only (Microsoft Learn, provider source and docs at the pinned tag, upstream project source). Link the source in `docs/decisions.md`.
+- **Azure and Kubernetes behaviour:** primary sources only (Microsoft Learn, provider source and docs at the pinned tag, upstream project source). Link the source in `docs/decisions-log.md`.
 - When the provider docs contradict each other, read the provider source at the pinned tag and cite the file.
 
 ## Security rules
 
-- **No secrets in Terraform.** Nothing that puts a credential into state: no `azurerm_key_vault_secret` values, no generated passwords, no Kubernetes token Secrets. Document them as manual steps in the README instead.
+- **No secrets in Terraform.** Nothing that puts a credential into state: no `azurerm_key_vault_secret` values, no generated passwords, no Kubernetes token Secrets. Document them as manual steps in `docs/deployment.md` instead.
 - **No hard-coded user, tenant or subscription IDs.** The deployer comes from `data.azurerm_client_config.current`, and the subscription from `az account set`.
 - **Entra ID over keys.** Shared keys stay off on storage. Postgres is Entra-only. ACR admin user stays off.
-- **Agent pods get no cloud identity except the commit-signing key (ADR-003).** The approved #18 exception gives `coder` a dedicated identity with `Key Vault Secrets User` on the signing-key secret only. Any further agent cloud access needs an explicit decision from the human developer.
+- **Agent pods get no cloud identity except approved secret reads (ADR-003, #18, #26).** `coder` and `planner` each have a dedicated identity with `Key Vault Secrets User`, assigned separately on each secret they need: `coder` reads the signing key, GitHub PAT and AI gateway key; `planner` reads the PAT and gateway key. `reviewer`, `open-pr` and `argo-executor` have no identity. Any further agent cloud access needs an explicit decision from the human developer.
 - **Least privilege per identity.** Scope role assignments to the narrowest resource, e.g. a container rather than its account. Don't share an identity between components with different access needs.
-- **Nothing pushes to ACR.** Images are pushed manually. No identity in this repo, the cluster or GitHub gets push.
+- **Only GitHub Actions pushes to ACR.** `AcrPush` goes only to the two GitHub OIDC identities, each federated to the `production` environment of one repo (`ai-native-sdlc-agent-images`, `ai-native-sdlc-platform-services`). Nothing in the cluster gets push.
 - **Config is not a boundary.** Network rules, firewall rules and RBAC are mitigations. Name what they actually enforce.
 
 ## Terraform conventions
 
-- One root module calls `modules/networking`, `modules/shared`, `modules/identities`, `modules/cluster` and `modules/kubernetes`, applied in that order with `-target`. Dependencies flow through module outputs; add `depends_on` only where Terraform can't see the dependency.
+- One root module calls `modules/networking`, `modules/shared`, `modules/identities`, `modules/cluster`, `modules/kubernetes` and `modules/platform_stop_mi`, applied in that order with `-target`. Dependencies flow through module outputs; add `depends_on` only where Terraform can't see the dependency.
 - Modules declare `required_providers` with version ranges, and contain no `provider` blocks.
 - **Naming:** `{name}-{type}` for resource groups, with no random suffix (including `{name}-cluster-rg` and `{name}-aks-managed-rg`). Add `-{suffix}` for the AKS cluster resource name and for globally unique names. Hyphen-less names are squashed: `aisdlc{suffix}cr`.
 - Files split by concern (`_aks.tf`, `_rbac.tf`, `_identities.tf`), with `# ====` banner comments.
@@ -56,7 +57,7 @@ If an ADR and this repo disagree, flag it to the human developer. Don't silently
 
 ## Decisions
 
-- Every infrastructure choice gets a row in [`docs/decisions.md`](./docs/decisions.md), with the date, the decision and why. That includes small choices and choices made by the human developer.
+- Every infrastructure choice gets a row in [`docs/decisions-log.md`](./docs/decisions-log.md), with the date, the decision and why. That includes small choices and choices made by the human developer.
 - Deferred target designs go into a GitHub issue, linked from the decision row.
 
 ## Writing style
