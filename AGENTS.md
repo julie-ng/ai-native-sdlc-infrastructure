@@ -37,14 +37,14 @@ If an ADR and this repo disagree, flag it to the human developer. Don't silently
 - **No secrets in Terraform.** Nothing that puts a credential into state: no `azurerm_key_vault_secret` values, no generated passwords, no Kubernetes token Secrets. Document them as manual steps in the README instead.
 - **No hard-coded user, tenant or subscription IDs.** The deployer comes from `data.azurerm_client_config.current`, and the subscription from `az account set`.
 - **Entra ID over keys.** Shared keys stay off on storage. Postgres is Entra-only. ACR admin user stays off.
-- **Agent pods get no cloud identity except the commit-signing key (ADR-003).** The approved #18 exception gives `coder` a dedicated identity with `Key Vault Secrets User` on the signing-key secret only. Any further agent cloud access needs an explicit decision from the human developer.
+- **Agent pods get no cloud identity except approved secret reads (ADR-003, #18, #26).** `coder` and `planner` each have a dedicated identity with `Key Vault Secrets User`, assigned separately on each secret they need: `coder` reads the signing key, GitHub PAT and AI gateway key; `planner` reads the PAT and gateway key. `reviewer`, `open-pr` and `argo-executor` have no identity. Any further agent cloud access needs an explicit decision from the human developer.
 - **Least privilege per identity.** Scope role assignments to the narrowest resource, e.g. a container rather than its account. Don't share an identity between components with different access needs.
-- **Nothing pushes to ACR.** Images are pushed manually. No identity in this repo, the cluster or GitHub gets push.
+- **Only GitHub Actions pushes to ACR.** `AcrPush` goes only to the two GitHub OIDC identities, each federated to the `production` environment of one repo (`ai-native-sdlc-agent-images`, `ai-native-sdlc-platform-services`). Nothing in the cluster gets push.
 - **Config is not a boundary.** Network rules, firewall rules and RBAC are mitigations. Name what they actually enforce.
 
 ## Terraform conventions
 
-- One root module calls `modules/networking`, `modules/shared`, `modules/identities`, `modules/cluster` and `modules/kubernetes`, applied in that order with `-target`. Dependencies flow through module outputs; add `depends_on` only where Terraform can't see the dependency.
+- One root module calls `modules/networking`, `modules/shared`, `modules/identities`, `modules/cluster`, `modules/kubernetes` and `modules/platform_stop_mi`, applied in that order with `-target`. Dependencies flow through module outputs; add `depends_on` only where Terraform can't see the dependency.
 - Modules declare `required_providers` with version ranges, and contain no `provider` blocks.
 - **Naming:** `{name}-{type}` for resource groups, with no random suffix (including `{name}-cluster-rg` and `{name}-aks-managed-rg`). Add `-{suffix}` for the AKS cluster resource name and for globally unique names. Hyphen-less names are squashed: `aisdlc{suffix}cr`.
 - Files split by concern (`_aks.tf`, `_rbac.tf`, `_identities.tf`), with `# ====` banner comments.
