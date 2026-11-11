@@ -1,6 +1,6 @@
 # Workload integration
 
-What workloads maintained in other repos (workflow templates, platform-services, agent images) must do to use the identities, ServiceAccounts and secret mounts this repo creates. For who can read what, see the [identity diagrams in the README](../README.md#identities-and-access).
+What workloads maintained in other repos (workflow templates, platform-services, agent images) must do to use the identities, ServiceAccounts and secret mounts this repo creates. For who can read what, see the [identity diagrams in the README](../README.md#identity-and-access-model-iam).
 
 Key Vault values were populated under #21. Don't rerun initialization or reset for these changes. Terraform only configures names, grants and CSI references.
 

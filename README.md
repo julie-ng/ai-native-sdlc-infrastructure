@@ -49,8 +49,8 @@ Resource group names carry no random suffix. AKS creates its own node resources 
 | Entra app + service principal | `ai-sdlc-local-dev` | shared | Runs the artifact service from a laptop; credential created manually |
 | AKS cluster | `ai-sdlc-{suffix}-cluster` | cluster | Free tier; Entra ID + Azure RBAC, local accounts off; OIDC issuer and workload identity; Azure CNI Overlay with Cilium; Key Vault CSI add-on |
 | Data collection rule | `MSCI-northeurope-{cluster}` | cluster | Container Insights: `ContainerLogV2`, `KubeEvents`, `KubePodInventory` |
-| Managed identities | 12, see [Identities and access](#identities-and-access) | identities, platform_stop_mi | User-assigned, `prevent_destroy` |
-| Role assignments | see [Identities and access](#identities-and-access) | shared, identities, cluster, platform_stop_mi | Scoped to the narrowest resource |
+| Managed identities | 12, see [Identity and access model](#identity-and-access-model-iam) | identities, platform_stop_mi | User-assigned, `prevent_destroy` |
+| Role assignments | see [Identity and access model](#identity-and-access-model-iam) | shared, identities, cluster, platform_stop_mi | Scoped to the narrowest resource |
 
 ### Network access
 
@@ -97,7 +97,7 @@ Agent pods run LLM-driven code, so `agents` has two extra controls:
 
 Argo itself is installed with Helm, not Terraform; see [deployment](./docs/deployment.md#install-argo-workflows).
 
-## Identities and access
+## Identity and access model (IAM)
 
 Workload identities only. The other identities are summarised [below](#other-identities). How workloads mount their secrets: [workload integration](./docs/workload-integration.md).
 

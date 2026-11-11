@@ -12,7 +12,7 @@ Project-specific instructions for any agent working in this repo, alongside the 
 
 ## Reading order
 
-1. [README](./README.md): deployed resources, identities and access, unverified items
+1. [README](./README.md): deployed resources, identity and access model (IAM), unverified items
 2. [`docs/deployment.md`](./docs/deployment.md): apply order, manual steps
 3. [`docs/decisions-log.md`](./docs/decisions-log.md)
 4. The ADRs relevant to the task
