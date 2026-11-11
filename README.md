@@ -180,37 +180,44 @@ POSTGRESQL  ai-sdlc-{suffix}-psql                   Entra-only auth; Entra admin
 
 ### Access matrix
 
-Rows are the narrowest scope a grant can land on. Empty = no access.
+One table per service. Rows are the narrowest scope a grant can land on; columns are the identities with any grant on that service. Empty = no access.
 
-```
-                                    platform  foreman  gh-token  argo-wf     argo     planner  coder
-                                    services           broker    controller  server
-                                    ────────  ───────  ────────  ──────────  ───────  ───────  ─────
-KEY VAULT (secret scope)
-  platform-services-admin-token        R         R
-  platform-services-hmac-key           R
-  token-broker-gh-app-private-key                         R
-  agent-gpg-private-key                                                                         R
-  julieio-goose-github-pat                                                              R       R
-  vercel-ai-gateway-api-key                                                             R       R
-  agent-gpg-public-key / fingerprint
-  argo-executor-token
+**Key Vault** — `Key Vault Secrets User`, one assignment per secret
 
-BLOB STORAGE
-  artifacts account                    D
-    └ artifacts container              RW
-  argo account
-    └ argo container                                                 RW         R
+| Secret | `platform-services` | `foreman` | `gh-token-broker` | `planner` | `coder` |
+|---|:---:|:---:|:---:|:---:|:---:|
+| `platform-services-admin-token` | Read | Read | | | |
+| `platform-services-hmac-key` | Read | | | | |
+| `token-broker-gh-app-private-key` | | | Read | | |
+| `agent-gpg-private-key` | | | | | Read |
+| `julieio-goose-github-pat` | | | | Read | Read |
+| `vercel-ai-gateway-api-key` | | | | Read | Read |
+| `agent-gpg-public-key` | | | | | |
+| `agent-gpg-fingerprint` | | | | | |
+| `argo-executor-token` | | | | | |
 
-POSTGRESQL (SQL roles, manual)
-  workflow database                    RW*
-  argo database                                                      (#33)     (#33)
+**Blob Storage**
 
-R  = Key Vault Secrets User / Storage Blob Data Reader
-RW = Storage Blob Data Contributor
-D  = Storage Blob Delegator (user-delegation SAS signing key)
-*  = CONNECT + CREATE on DB, USAGE + CREATE on schema public; owns its own tables
-```
+| Scope | `platform-services` | `argo-workflow-controller` | `argo-server` |
+|---|:---:|:---:|:---:|
+| `aisdlc{suffix}artifacts` account | Delegator¹ | | |
+| └ `artifacts` container | Read/write | | |
+| └ `local-dev` container | | | |
+| `aisdlc{suffix}argo` account | | | |
+| └ `argo` container | | Read/write | Read |
+
+- Read/write = `Storage Blob Data Contributor`; Read = `Storage Blob Data Reader`.
+- ¹ `Storage Blob Delegator`: signs user-delegation SAS URLs. Grants no blob access by itself; a SAS can't exceed the container-scoped grant.
+- `local-dev` is used only by the local-dev service principal, not a workload identity.
+
+**PostgreSQL** — database roles granted with SQL, not Azure RBAC
+
+| Database | `platform-services` | `argo-workflow-controller` | `argo-server` |
+|---|:---:|:---:|:---:|
+| `workflow` | Read/write² | | |
+| `argo` | | Not yet granted ([#33](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/33)) | Not yet granted ([#33](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/33)) |
+
+- ² `CONNECT, CREATE` on the database and `USAGE, CREATE` on schema `public`; the app owns the tables it creates. Applied 2026-11-10 ([#31](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/31)).
 
 ### Network reach
 
