@@ -58,7 +58,7 @@ resource "azurerm_role_assignment" "kubelet_acr_pull" {
 # ===================
 # Workload Identities
 # ===================
-# Postgres access (platform-services, argo) is not Azure RBAC - database roles via SQL, see README.
+# Postgres access (platform-services, argo) is not Azure RBAC - database roles via SQL, see docs/deployment.md.
 
 # Platform services - read/write blobs in the artifacts container only
 resource "azurerm_role_assignment" "platform_service_contributor_on_artifacts" {

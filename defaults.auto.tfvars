@@ -7,7 +7,7 @@ default_tags = {
   demo = "true"
 }
 
-# Set in git-ignored `private.auto.tfvars`, see README:
+# Set in git-ignored `private.auto.tfvars`, see docs/deployment.md:
 #   admin_ip_ranges = ["x.x.x.x/32"]
 
 # ============

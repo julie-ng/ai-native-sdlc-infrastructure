@@ -7,7 +7,7 @@
 #
 # Token Secret is NOT created here: Argo reads a Secret named `argo-executor.service-account-token`,
 # a legacy non-expiring token. Created by kubectl after apply so the token never lands in
-# Terraform state - see README.
+# Terraform state - see docs/deployment.md.
 
 resource "kubernetes_service_account_v1" "argo_executor" {
   metadata {

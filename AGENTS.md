@@ -12,10 +12,11 @@ Project-specific instructions for any agent working in this repo, alongside the 
 
 ## Reading order
 
-1. [README](./README.md): modules, apply order, manual steps, unverified items
-2. [`docs/decisions-log.md`](./docs/decisions-log.md)
-3. The ADRs relevant to the task
-4. Open issues on this repo, for deferred target designs
+1. [README](./README.md): deployed resources, identities and access, unverified items
+2. [`docs/deployment.md`](./docs/deployment.md): apply order, manual steps
+3. [`docs/decisions-log.md`](./docs/decisions-log.md)
+4. The ADRs relevant to the task
+5. Open issues on this repo, for deferred target designs
 
 If an ADR and this repo disagree, flag it to the human developer. Don't silently pick one.
 
@@ -34,7 +35,7 @@ If an ADR and this repo disagree, flag it to the human developer. Don't silently
 
 ## Security rules
 
-- **No secrets in Terraform.** Nothing that puts a credential into state: no `azurerm_key_vault_secret` values, no generated passwords, no Kubernetes token Secrets. Document them as manual steps in the README instead.
+- **No secrets in Terraform.** Nothing that puts a credential into state: no `azurerm_key_vault_secret` values, no generated passwords, no Kubernetes token Secrets. Document them as manual steps in `docs/deployment.md` instead.
 - **No hard-coded user, tenant or subscription IDs.** The deployer comes from `data.azurerm_client_config.current`, and the subscription from `az account set`.
 - **Entra ID over keys.** Shared keys stay off on storage. Postgres is Entra-only. ACR admin user stays off.
 - **Agent pods get no cloud identity except approved secret reads (ADR-003, #18, #26).** `coder` and `planner` each have a dedicated identity with `Key Vault Secrets User`, assigned separately on each secret they need: `coder` reads the signing key, GitHub PAT and AI gateway key; `planner` reads the PAT and gateway key. `reviewer`, `open-pr` and `argo-executor` have no identity. Any further agent cloud access needs an explicit decision from the human developer.

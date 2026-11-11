@@ -12,7 +12,7 @@ locals {
   suffix = var.suffix == "" ? random_string.suffix.result : var.suffix
 }
 
-# Apply one module at a time, in this order - see README.
+# Apply one module at a time, in this order - see docs/deployment.md.
 #   1. networking
 #   2. shared      (backing services)
 #   3. identities   (persistent principals and grants)

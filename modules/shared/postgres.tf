@@ -33,7 +33,7 @@ resource "azurerm_postgresql_flexible_server" "postgres" {
 }
 
 # Human admin = whoever `az login` signed in as. Platform identities get database roles
-# via SQL after apply - see README.
+# via SQL after apply - see docs/deployment.md.
 # Assumes a user sign-in; a service principal has no azuread_user.
 data "azuread_user" "current" {
   object_id = data.azurerm_client_config.current.object_id
