@@ -175,7 +175,14 @@ Kept out of Terraform so secrets never land in state, or because no azurerm reso
 
   Applies [`manifests/argo-executor-token.yaml`](./manifests/argo-executor-token.yaml) to `AGENTS_NAMESPACE` (default `agents`, matching Terraform). Run after the Kubernetes module apply and before submitting workflows. Rerunning applies the same metadata without replacing the token. The Secret stored in Key Vault does not create this Kubernetes Secret.
 
-- [**Postgres roles for workload identities.**](https://learn.microsoft.com/en-us/azure/postgresql/security/security-manage-entra-users?source=recommendations) As the Entra admin, create the app role for `platform-services-mi` (not the retired `workflow-service-mi`). Use its `principal_id` from `terraform output -json summary` → `identities.workloads["platform-services"]`:
+- [**Postgres roles for workload identities.**](https://learn.microsoft.com/en-us/azure/postgresql/security/security-manage-entra-users) With Azure CLI signed in as the Entra admin and your IP allowed by the database firewall, [connect using an Entra token](https://learn.microsoft.com/en-us/azure/postgresql/security/security-entra-configure):
+
+  ```sh
+  PGPASSWORD="$(az account get-access-token --resource-type oss-rdbms --query accessToken --output tsv)" \
+    psql "host=<server>.postgres.database.azure.com port=5432 dbname=postgres user=<entra-admin> sslmode=require"
+  ```
+
+  Create the app role for `platform-services-mi` (not the retired `workflow-service-mi`). Use its `principal_id` from `terraform output -json summary` → `identities.workloads["platform-services"]`:
 
   ```sql
   SELECT * FROM pg_catalog.pgaadauth_create_principal_with_oid(
@@ -183,7 +190,17 @@ Kept out of Terraform so secrets never land in state, or because no azurerm reso
   );
   ```
 
-  Grant this role the app's required access in the `workflow` database. Argo still needs separate roles for `argo-workflow-controller-mi` and `argo-server-mi` in its `argo` database, using their own principal IDs. The function and managed-identity object type are [documented by Microsoft](https://learn.microsoft.com/en-us/azure/postgresql/security/security-manage-entra-users#create-a-role-by-using-the-microsoft-entra-id-object-identifier); database grants and authentication remain unverified on this deployment.
+  As the Entra admin, grant access to `workflow` and its `public` schema:
+
+  ```sql
+  GRANT CONNECT, CREATE ON DATABASE workflow TO "platform-services-mi";
+  \c workflow
+  GRANT USAGE, CREATE ON SCHEMA public TO "platform-services-mi";
+  ```
+
+  Enter `\c workflow` on its own line; if pasted together with the next SQL statement, psql reads that statement as connection arguments. The app runs its own startup migrations as `platform-services-mi`, so it owns its tables and the `drizzle` journal schema. Database `CREATE` permits schema creation; schema `CREATE` permits table creation. PostgreSQL 15+ does not grant regular roles `CREATE` on `public` by default ([schema privileges](https://www.postgresql.org/docs/17/ddl-schemas.html#DDL-SCHEMAS-PRIV)). The human developer applied these grants on 2026-11-10 and verified that `has_database_privilege('platform-services-mi', 'workflow', 'CREATE')` returns `t` ([#31](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/31)).
+
+  Argo still needs separate roles for `argo-workflow-controller-mi` and `argo-server-mi` in its `argo` database, using their own principal IDs; their database grants and authentication remain unverified on this deployment. The function and managed-identity object type are [documented by Microsoft](https://learn.microsoft.com/en-us/azure/postgresql/security/security-manage-entra-users#create-a-role-by-using-the-microsoft-entra-id-object-identifier).
 - **Local-dev service principal credential.** `{name}-local-dev` has no secret in Terraform. Run `make local-dev-credential` (`az ad app credential reset --append --years 1`), copy the secret from the terminal into a password manager or git-ignored file, and keep it out of the repo.
 - **Key Vault secrets.** After the shared module apply, run `make init-kv-secrets` with your Azure CLI login and an allowed admin IP. It reads the vault name from the saved `summary.shared.key_vault.name` output; if that output is not saved yet, use `KEY_VAULT_NAME=<vault-name> make init-kv-secrets`.
   - Secret names and the bootstrap value are editable at the top of [`scripts/init-kv-secrets.sh`](./scripts/init-kv-secrets.sh).
