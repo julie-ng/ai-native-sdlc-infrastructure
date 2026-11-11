@@ -5,7 +5,14 @@ Terraform for the AI SDLC platform on Azure: one AKS cluster plus the backing se
 > [!IMPORTANT]
 > All infrastructure modules were deployed successfully by the human developer on 2026-10-22. Argo hello-world succeeded on 2026-11-05; platform services and agent workflows have not been tested. Agents verify offline only; see [Unverified](#unverified).
 
-**Deploying or operating it:** see [`docs/deployment.md`](./docs/deployment.md) for prerequisites, apply order, start/stop, Argo installation and manual steps.
+## Docs
+
+- [Deployment](./docs/deployment.md) — prerequisites, apply order, start/stop, Argo install, manual steps
+- [Decisions](./docs/decisions-log.md) — decision log for this repo
+- [Workload integration](./docs/workload-integration.md) — ServiceAccounts, labels and secret mounts that workloads in other repos must use
+- [Monitoring costs](./docs/monitoring.md) — Container Insights collection and cost controls
+- [Verification log](./docs/verification-log.md) — checks completed by the human developer
+- [Inventory](./docs/inventory.md) — resource groups and conventions from the earlier cloudkube repos this is based on
 
 ## What gets deployed
 
@@ -246,12 +253,3 @@ Open checks; completed ones are in the [verification log](./docs/verification-lo
 - [ ] CRD version upgrades, uninstall/reinstall and the sample devcontainer Helm feature build.
 - [ ] Monitoring table selection, ConfigMap filters, observed ingestion volume and cap behavior. Successful resource deployment does not prove logs are flowing or filtering correctly.
 - [ ] Identity continuity across a cluster rebuild.
-
-## Docs
-
-- [Deployment](./docs/deployment.md) — prerequisites, apply order, start/stop, Argo install, manual steps
-- [Decisions](./docs/decisions-log.md) — decision log for this repo
-- [Workload integration](./docs/workload-integration.md) — ServiceAccounts, labels and secret mounts that workloads in other repos must use
-- [Monitoring costs](./docs/monitoring.md) — Container Insights collection and cost controls
-- [Verification log](./docs/verification-log.md) — checks completed by the human developer
-- [Inventory](./docs/inventory.md) — resource groups and conventions from the earlier cloudkube repos this is based on
