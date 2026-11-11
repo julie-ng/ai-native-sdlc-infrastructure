@@ -247,16 +247,12 @@ Open checks; completed ones are in the [verification log](./docs/verification-lo
 
 - [ ] Key Vault seed command against Azure: creates missing placeholders, preserves Portal-created versions on rerun, and fails cleanly if firewall/RBAC denies access. Verified offline with mocked CLI calls only.
 - [ ] #19 identity retirement: removal of old federations/grants, including the vault-wide broker grant; no secret values modified.
-- [ ] #26 provisioning: review the four new secret-scoped grants, planner/coder-only federation and annotations, retained coder signing grant and any CSI resource recreation. Reviewer/open-pr have no identity; existing platform grants are unchanged.
-- [ ] #26 CSI positive/negative checks: labeled coder and planner pods mount their three/two files while IMDS remains blocked; verify files are nonempty without printing values. Planner must fail to read `agent-gpg-private-key` directly using its own identity, and must fail to mount coder's class. Inspect mount events for authentication failure.
-- [ ] #18 least privilege: coder's signing identity cannot read the admin/HMAC or GitHub App secrets; commit signing from the mounted key succeeds.
-- [ ] `foreman` CSI admin-token mount succeeds while IMDS remains blocked; an unrelated ServiceAccount cannot mount it using foreman's identity.
-- [ ] `foreman` can create HMAC Secrets but cannot get/list/update/patch/delete Secrets or read Workflows; deleting a test Workflow garbage-collects its Secrets.
-- [ ] `platform-services-mi` authenticates to PostgreSQL and Blob and reads only its admin/HMAC secrets; `gh-token-broker-mi` can read the GitHub App private key but not those secrets.
-- [ ] #29: the labeled `platform-services` pod in `platform` mounts nonempty `platform-services-admin-token` and `platform-services-hmac-key` files at `/mnt/secrets` without printing values.
+- [ ] #26: planner fails to read `agent-gpg-private-key` directly with its own identity. Not attempted; the grant listing shows planner has no grant on it.
+- [ ] IMDS still blocked from `agents` pods after the workload identity and CSI changes. `deny-imds` is unchanged since #4 but was not re-tested.
+- [ ] `foreman`: an unrelated ServiceAccount cannot mount `foreman-admin-token` using foreman's identity; `foreman` cannot get/list/update/patch/delete Secrets or read Workflows.
+- [ ] `platform-services-mi` reads only its admin/HMAC secrets (grants not listed); `gh-token-broker-mi` can read the GitHub App private key but not those secrets (broker not built).
 - [ ] The SecretProviderClass CRD exists before `make plan-k8s`. `kubernetes_manifest` needs its schema at plan time; on a new cluster, apply the cluster stage (CSI add-on) first.
 - [ ] Argo database roles and authentication ([#33](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/33)).
-- [ ] Agent workflows, executor-only token mount inspection and application integrations.
 - [ ] CRD version upgrades, uninstall/reinstall and the sample devcontainer Helm feature build.
 - [ ] Monitoring table selection, ConfigMap filters, observed ingestion volume and cap behavior. Successful resource deployment does not prove logs are flowing or filtering correctly.
 - [ ] Identity continuity across a cluster rebuild.
