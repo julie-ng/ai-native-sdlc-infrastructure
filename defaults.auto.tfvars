@@ -1,5 +1,5 @@
 name     = "ai-sdlc"
-location = "westeurope" # PostgreSQL and monitoring are pinned to northeurope; see docs/decisions.md.
+location = "westeurope" # PostgreSQL and monitoring are pinned to northeurope; see docs/decisions-log.md.
 
 default_tags = {
   env  = "dev"

@@ -8,12 +8,12 @@ Project-specific instructions for any agent working in this repo, alongside the 
 ## About this repo
 
 - Terraform for the AI SDLC platform on Azure: one AKS cluster plus its backing services. Single environment (`dev`).
-- Infrastructure choices and trade-offs: [`docs/decisions.md`](./docs/decisions.md). Read it before changing anything.
+- Infrastructure choices and trade-offs: [`docs/decisions-log.md`](./docs/decisions-log.md). Read it before changing anything.
 
 ## Reading order
 
 1. [README](./README.md): modules, apply order, manual steps, unverified items
-2. [`docs/decisions.md`](./docs/decisions.md)
+2. [`docs/decisions-log.md`](./docs/decisions-log.md)
 3. The ADRs relevant to the task
 4. Open issues on this repo, for deferred target designs
 
@@ -29,7 +29,7 @@ If an ADR and this repo disagree, flag it to the human developer. Don't silently
 ## Verify, don't guess
 
 - **Provider argument names:** check them against `terraform providers schema -json` for the pinned version, not against memory or older examples. azurerm 5.x renamed many arguments and added required blocks.
-- **Azure and Kubernetes behaviour:** primary sources only (Microsoft Learn, provider source and docs at the pinned tag, upstream project source). Link the source in `docs/decisions.md`.
+- **Azure and Kubernetes behaviour:** primary sources only (Microsoft Learn, provider source and docs at the pinned tag, upstream project source). Link the source in `docs/decisions-log.md`.
 - When the provider docs contradict each other, read the provider source at the pinned tag and cite the file.
 
 ## Security rules
@@ -56,7 +56,7 @@ If an ADR and this repo disagree, flag it to the human developer. Don't silently
 
 ## Decisions
 
-- Every infrastructure choice gets a row in [`docs/decisions.md`](./docs/decisions.md), with the date, the decision and why. That includes small choices and choices made by the human developer.
+- Every infrastructure choice gets a row in [`docs/decisions-log.md`](./docs/decisions-log.md), with the date, the decision and why. That includes small choices and choices made by the human developer.
 - Deferred target designs go into a GitHub issue, linked from the decision row.
 
 ## Writing style

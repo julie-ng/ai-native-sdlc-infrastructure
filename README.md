@@ -335,7 +335,7 @@ Egress: all cluster outbound traffic leaves via `ai-sdlc-egress-ip` (load balanc
 
 ## Unverified
 
-Open checks; completed ones are in the [verification log](./docs/verification.md). No Azure or cluster commands were run by the agent.
+Open checks; completed ones are in the [verification log](./docs/verification-log.md). No Azure or cluster commands were run by the agent.
 
 - [ ] Key Vault seed command against Azure: creates missing placeholders, preserves Portal-created versions on rerun, and fails cleanly if firewall/RBAC denies access. Verified offline with mocked CLI calls only.
 - [ ] #19 identity retirement: removal of old federations/grants, including the vault-wide broker grant; no secret values modified.
@@ -355,8 +355,8 @@ Open checks; completed ones are in the [verification log](./docs/verification.md
 
 ## Docs
 
-- [Decisions](./docs/decisions.md) — decision log for this repo
+- [Decisions](./docs/decisions-log.md) — decision log for this repo
 - [Workload integration](./docs/workload-integration.md) — ServiceAccounts, labels and secret mounts that workloads in other repos must use
 - [Monitoring costs](./docs/monitoring.md) — Container Insights collection and cost controls
-- [Verification log](./docs/verification.md) — checks completed by the human developer
+- [Verification log](./docs/verification-log.md) — checks completed by the human developer
 - [Inventory](./docs/inventory.md) — resource groups and conventions from the earlier cloudkube repos this is based on
