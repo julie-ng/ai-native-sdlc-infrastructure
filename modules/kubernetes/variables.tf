@@ -76,3 +76,8 @@ variable "agent_secret_provider_class_names" {
   type        = map(string)
   description = "Agent role to CSI class name, separate from platform ServiceAccounts."
 }
+
+variable "github_broker_secret_provider_class_name" {
+  type        = string
+  description = "SecretProviderClass name referenced by the token-broker Deployment in the github-broker namespace."
+}

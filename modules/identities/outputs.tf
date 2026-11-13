@@ -66,3 +66,15 @@ output "github_platform_services_acr_push" {
   # Nodes must be able to pull images when the cluster starts.
   depends_on = [azurerm_role_assignment.github_platform_services_acr_push]
 }
+
+output "github_broker_acr_push" {
+  value = {
+    id           = azurerm_user_assigned_identity.github_broker_mi.id
+    name         = azurerm_user_assigned_identity.github_broker_mi.name
+    client_id    = azurerm_user_assigned_identity.github_broker_mi.client_id
+    principal_id = azurerm_user_assigned_identity.github_broker_mi.principal_id
+  }
+
+  # Export only after the workflow identity has its push grant.
+  depends_on = [azurerm_role_assignment.github_broker_acr_push]
+}

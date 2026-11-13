@@ -40,7 +40,7 @@ If an ADR and this repo disagree, flag it to the human developer. Don't silently
 - **Entra ID over keys.** Shared keys stay off on storage. Postgres is Entra-only. ACR admin user stays off.
 - **Agent pods get no cloud identity except approved secret reads (ADR-003, #18, #26).** `coder` and `planner` each have a dedicated identity with `Key Vault Secrets User`, assigned separately on each secret they need: `coder` reads the signing key, GitHub PAT and AI gateway key; `planner` reads the PAT and gateway key. `reviewer`, `open-pr` and `argo-executor` have no identity. Any further agent cloud access needs an explicit decision from the human developer.
 - **Least privilege per identity.** Scope role assignments to the narrowest resource, e.g. a container rather than its account. Don't share an identity between components with different access needs.
-- **Only GitHub Actions pushes to ACR.** `AcrPush` goes only to the two GitHub OIDC identities, each federated to the `production` environment of one repo (`ai-native-sdlc-agent-images`, `ai-native-sdlc-platform-services`). Nothing in the cluster gets push.
+- **Only GitHub Actions pushes to ACR.** `AcrPush` goes only to the three GitHub OIDC identities, each federated to the `production` environment of one repo (`ai-native-sdlc-agent-images`, `ai-native-sdlc-platform-services`, `ai-native-sdlc-github-broker`). Nothing in the cluster gets push.
 - **Config is not a boundary.** Network rules, firewall rules and RBAC are mitigations. Name what they actually enforce.
 
 ## Terraform conventions

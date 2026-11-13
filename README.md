@@ -219,6 +219,15 @@ One table per service. Rows are the narrowest scope a grant can land on; columns
 
 - ² `CONNECT, CREATE` on the database and `USAGE, CREATE` on schema `public`; the app owns the tables it creates. Applied 2026-11-10 ([#31](https://github.com/julie-ng/ai-native-sdlc-infrastructure/issues/31)).
 
+**Kubernetes API — broker ServiceAccount**
+
+| ServiceAccount | Scope | Permission |
+|---|---|---|
+| `github-broker/token-broker` | Cluster | `authentication.k8s.io/tokenreviews: create` |
+| `github-broker/token-broker` | `agents` namespace | `pods: get` |
+
+The broker's `github-broker-secrets` SecretProviderClass mounts only `token-broker-gh-app-private-key`, using its existing secret-scoped Key Vault grant. No secret values or Kubernetes Secret synchronization are managed by Terraform.
+
 ### Network reach
 
 Applies to every pod, not per identity:
@@ -238,12 +247,25 @@ The network rules let every node reach these services. Only the identity grants 
 | `ai-sdlc-kubelet-mi` | AKS nodes | AcrPull → registry |
 | `ai-sdlc-agent-images-github-push-mi` | GitHub `ai-native-sdlc-agent-images`, `production` environment | AcrPush → registry |
 | `ai-sdlc-platform-services-github-push-mi` | GitHub `ai-native-sdlc-platform-services`, `production` environment | AcrPush → registry |
+| `ai-sdlc-github-broker-github-push-mi` | GitHub `ai-native-sdlc-github-broker`, `production` environment | AcrPush → registry |
 | `platform-stop-github-mi` | GitHub, this repo's `main` branch | Azure Kubernetes Service Contributor Role → cluster; Contributor → PostgreSQL server |
 | Key Vault CSI add-on identity | AKS-managed, on every node | None |
 
 ## Unverified
 
 Open checks; completed ones are in the [verification log](./docs/verification-log.md). No Azure or cluster commands were run by the agent.
+
+- [ ] #36 human-run plan adds exactly eight resources: one SecretProviderClass, one ClusterRole and binding, one Role and binding, one managed identity, its federated credential and one AcrPush assignment; no existing resources change.
+- [ ] #36 broker CSI mount reads the App key as file `token-broker-gh-app-private-key` without logging it; actual mount requires the broker Deployment from its own repository.
+- [ ] #36 broker repository's `production` workflow exchanges its OIDC token and pushes to ACR using `github_workflows.github_broker.client_id`; no cluster identity gets push.
+- [ ] #36 broker RBAC after human apply (default namespace names below):
+
+  ```sh
+  kubectl auth can-i create tokenreviews --as=system:serviceaccount:github-broker:token-broker # yes
+  kubectl auth can-i get pods -n agents --as=system:serviceaccount:github-broker:token-broker # yes
+  kubectl auth can-i get secrets -n agents --as=system:serviceaccount:github-broker:token-broker # no
+  kubectl auth can-i list pods -n agents --as=system:serviceaccount:github-broker:token-broker # no
+  ```
 
 - [ ] Key Vault seed command against Azure: creates missing placeholders, preserves Portal-created versions on rerun, and fails cleanly if firewall/RBAC denies access. Verified offline with mocked CLI calls only.
 - [ ] #19 identity retirement: removal of old federations/grants, including the vault-wide broker grant; no secret values modified.

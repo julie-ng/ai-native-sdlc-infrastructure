@@ -144,3 +144,9 @@ resource "azurerm_role_assignment" "planner_on_agent_secrets" {
   scope                = "${var.key_vault_id}/secrets/${each.value}"
   principal_id         = azurerm_user_assigned_identity.workloads["planner"].principal_id
 }
+
+resource "azurerm_role_assignment" "github_broker_acr_push" {
+  role_definition_name = "AcrPush"
+  scope                = var.container_registry_id
+  principal_id         = azurerm_user_assigned_identity.github_broker_mi.principal_id
+}

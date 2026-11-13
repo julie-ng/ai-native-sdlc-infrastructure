@@ -152,6 +152,7 @@ module "kubernetes" {
 
   platform_services_secret_provider_class_name = var.platform_services_secret_provider_class_name
   foreman_secret_provider_class_name           = var.foreman_secret_provider_class_name
+  github_broker_secret_provider_class_name     = var.github_broker_secret_provider_class_name
   key_vault_name                               = module.shared.key_vault.name
   key_vault_tenant_id                          = module.shared.key_vault.tenant_id
   key_vault_secret_names                       = var.key_vault_secret_names

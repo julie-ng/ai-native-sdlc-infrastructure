@@ -100,3 +100,5 @@ agent_secret_provider_class_names = {
   coder   = "coder-secrets"
   planner = "planner-secrets"
 }
+
+github_broker_secret_provider_class_name = "github-broker-secrets"
