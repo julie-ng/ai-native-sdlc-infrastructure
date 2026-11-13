@@ -77,3 +77,29 @@ resource "azurerm_federated_identity_credential" "github_platform_services_prod_
   user_assigned_identity_id = azurerm_user_assigned_identity.github_platform_services_mi.id
   subject                   = "repo:julie-ng@1269507/ai-native-sdlc-platform-services@1431106684:environment:production" # immutable subject claim
 }
+
+# =================================================
+#  GitHub Federated Credential (github-broker)
+# =================================================
+#  Used to push images to Azure Container Registry
+#
+resource "azurerm_user_assigned_identity" "github_broker_mi" {
+  name                = "ai-sdlc-github-broker-github-push-mi"
+  resource_group_name = azurerm_resource_group.identities_rg.name
+  location            = azurerm_resource_group.identities_rg.location
+  tags                = var.tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# MSFT How-to - https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation-create-trust-user-assigned-managed-identity
+# Configuration values - https://docs.github.com/en/actions/reference/security/oidc
+resource "azurerm_federated_identity_credential" "github_broker_prod_environment" {
+  name                      = "ai-sdlc-github-push-github-broker"
+  audience                  = ["api://AzureADTokenExchange"]                # per MSFT docs
+  issuer                    = "https://token.actions.githubusercontent.com" # per GitHub Docs
+  user_assigned_identity_id = azurerm_user_assigned_identity.github_broker_mi.id
+  subject                   = "repo:julie-ng@1269507/ai-native-sdlc-github-broker@1433193704:environment:production" # immutable subject claim
+}

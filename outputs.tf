@@ -18,6 +18,7 @@ output "github_workflows" {
   value = {
     agent_images      = module.identities.github_agent_images_acr_push
     platform_services = module.identities.github_platform_services_acr_push
+    github_broker     = module.identities.github_broker_acr_push
   }
 }
 

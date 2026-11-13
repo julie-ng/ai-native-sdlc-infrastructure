@@ -251,3 +251,8 @@ variable "agent_secret_provider_class_names" {
     error_message = "CSI roles must exist in agent_roles."
   }
 }
+
+variable "github_broker_secret_provider_class_name" {
+  type        = string
+  description = "SecretProviderClass name referenced by the token-broker Deployment in the github-broker namespace."
+}
