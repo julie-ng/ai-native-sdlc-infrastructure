@@ -66,3 +66,6 @@ spec:
 ## GitHub token broker
 
 - Runs as ServiceAccount `token-broker` in `github-broker`, annotated for `gh-token-broker-mi`.
+- SecretProviderClass `github-broker-secrets` (root variable `github_broker_secret_provider_class_name`) mounts the single file `token-broker-gh-app-private-key`. The broker Deployment must set the workload-identity pod label and mount this CSI volume read-only; no Kubernetes Secret synchronization is configured.
+- Its Kubernetes API token needs permission to create TokenReviews and get pods in `agents`; Terraform grants only those two permissions. The Deployment and Service remain in the broker repository.
+- Its repository's `production` GitHub environment uses the client ID from `github_workflows.github_broker.client_id` for OIDC image pushes. The federated subject is `repo:julie-ng@1269507/ai-native-sdlc-github-broker@1433193704:environment:production`; matching the emitted subject and a successful push remain unverified until the human-run workflow.
